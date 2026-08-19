@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>THE KILN — a firing</title>
+<style>
+:root{
+  --ink:#0b0a09; --ink2:#131110; --line:#2b2724; --line2:#3d3833;
+  --pale:#d8cfc0; --dim:#8b8377; --dim2:#655e55;
+  --fire:#ff9a3c; --hot:#ffd9a0; --cold:#8fb0d4; --bad:#c9603f; --good:#8fae74;
+  --paper:#e8ddc6;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--ink);color:var(--pale);
+  font:14px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  -webkit-font-smoothing:antialiased;overflow:hidden}
+button{font:inherit;color:inherit;background:none;border:1px solid var(--line2);
+  padding:7px 14px;cursor:pointer;letter-spacing:.03em;transition:.12s}
+button:hover:not(:disabled){border-color:var(--pale);background:#1b1816}
+button:disabled{opacity:.3;cursor:default}
+button.prime{border-color:var(--fire);color:var(--hot)}
+button.prime:hover{background:#2a1a0e}
+.lc{text-transform:lowercase}
+h1,h2,h3{font-weight:500;margin:0;letter-spacing:.06em}
+#app{height:100%;display:flex;flex-direction:column}
+.scr{flex:1;display:none;flex-direction:column;min-height:0;padding:26px 30px;overflow:auto}
+.scr.on{display:flex}
+.hd{display:flex;align-items:baseline;gap:14px;margin-bottom:4px}
+.hd h2{font-size:17px;color:var(--paper)}
+.hd .sub{color:var(--dim2);font-size:12px}
+.mid{flex:1;display:flex;min-height:0}
+.foot{display:flex;gap:10px;align-items:center;padding-top:14px;border-top:1px solid var(--line);margin-top:14px}
+.foot .sp{flex:1}
+.card{border:1px solid var(--line);padding:14px 16px;background:var(--ink2)}
+.k{color:var(--dim2);font-size:11px;letter-spacing:.09em;text-transform:uppercase}
+
+/* ---------- title ---------- */
+#scr-title{align-items:center;justify-content:center;text-align:center}
+#scr-title h1{font-size:40px;letter-spacing:.34em;color:var(--paper)}
+#scr-title .tag{color:var(--dim);margin:16px 0 30px;max-width:44ch;line-height:1.7}
+#scr-title .cred{margin-top:38px;color:var(--dim2);font-size:11px;letter-spacing:.12em}
+
+/* ---------- conditions ---------- */
+.conds{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:18px 0}
+.cond{border:1px solid var(--line);padding:16px;background:var(--ink2)}
+.cond .v{font-size:15px;color:var(--paper);margin-top:8px}
+.cond .d{color:var(--dim2);font-size:11px;margin-top:6px}
+.note{color:var(--dim);max-width:66ch;line-height:1.7}
+
+/* ---------- load ---------- */
+.loadwrap{display:flex;gap:26px;flex:1;min-height:0}
+.damp{width:320px;display:flex;flex-direction:column;min-height:0}
+.shelfscroll{overflow:auto;flex:1;border:1px solid var(--line);padding:8px;background:var(--ink2)}
+.piece{border:1px solid var(--line2);padding:8px 10px;margin-bottom:7px;cursor:pointer;transition:.1s}
+.piece:hover{border-color:var(--pale)}
+.piece.sel{border-color:var(--fire);background:#241a12}
+.piece.placed{opacity:.28;pointer-events:none}
+.piece .n{color:var(--paper)}
+.piece .o{color:var(--dim2);font-size:11px}
+.piece .g{color:var(--fire);font-size:11px}
+.kilngrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;align-content:start}
+.slot{border:1px dashed var(--line2);min-height:104px;padding:9px;cursor:pointer;transition:.12s;position:relative}
+.slot:hover{border-color:var(--pale);border-style:solid}
+.slot.full{border-style:solid;border-color:var(--line2);background:var(--ink2)}
+.slot .pn{font-size:10px;color:var(--dim2);letter-spacing:.07em;text-transform:uppercase}
+.slot .it{margin-top:8px;color:var(--paper);font-size:12.5px;line-height:1.35}
+.slot .ig{color:var(--fire);font-size:11px}
+.slot .hint{color:var(--dim2);font-size:10.5px;margin-top:5px;font-style:italic}
+.slot.flag::after{content:'★';position:absolute;top:6px;right:8px;color:var(--fire)}
+
+/* ---------- fire ---------- */
+.fire{display:grid;grid-template-columns:300px 1fr 250px;gap:22px;flex:1;min-height:0}
+.inst{display:flex;flex-direction:column;gap:12px}
+canvas.spy{width:100%;height:150px;border:1px solid var(--line);background:#000;display:block}
+canvas.cones{width:100%;height:150px;border:1px solid var(--line);background:#0f0d0c;display:block}
+.readout{display:flex;justify-content:space-between;align-items:baseline}
+.readout .val{font-size:22px;color:var(--paper)}
+.readout .val.warn{color:var(--fire)}
+.stage{flex:1;display:flex;flex-direction:column;min-height:0}
+.window{border:1px solid var(--fire);padding:14px 16px;background:#1c1209}
+.window.idle{border-color:var(--line);background:var(--ink2)}
+.window .w1{font-size:16px;color:var(--hot);letter-spacing:.08em}
+.window.idle .w1{color:var(--dim)}
+.window .w2{color:var(--dim);font-size:12px;margin-top:6px}
+.window .bar{height:3px;background:var(--line);margin-top:11px}
+.window .bar i{display:block;height:100%;background:var(--fire)}
+.logbox{flex:1;overflow:auto;margin-top:12px;border:1px solid var(--line);padding:10px 12px;background:var(--ink2);font-size:12px;min-height:0}
+.logbox div{margin-bottom:3px;color:var(--dim)}
+.logbox .t{color:var(--dim2);margin-right:8px}
+.logbox .beat{color:var(--good)} .logbox .miss,.logbox .fault{color:var(--bad)}
+.logbox .door{color:var(--fire)} .logbox .cone{color:var(--paper)} .logbox .window{color:var(--hot)}
+.ctrls{display:flex;flex-direction:column;gap:16px}
+.ctrl .top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px}
+.ctrl .nm{letter-spacing:.1em;text-transform:uppercase;font-size:11px;color:var(--dim)}
+.ctrl .num{font-size:17px;color:var(--paper)}
+.det{display:flex;gap:3px}
+.det b{flex:1;height:26px;border:1px solid var(--line2);cursor:pointer;transition:.1s;background:transparent}
+.det b:hover{border-color:var(--pale)}
+.det b.on{background:var(--dim2);border-color:var(--dim2)}
+.det b.eff{background:var(--fire);border-color:var(--fire)}
+.ctrl .lagnote{font-size:10.5px;color:var(--dim2);margin-top:5px;height:13px}
+.speed{display:flex;gap:5px}
+.speed b{padding:4px 10px;border:1px solid var(--line2);cursor:pointer;font-size:12px}
+.speed b.on{border-color:var(--fire);color:var(--hot)}
+
+/* ---------- cool + unload ---------- */
+#scr-cool .big{font-size:46px;color:var(--paper);letter-spacing:.05em}
+#coolbar{height:4px;background:var(--line);margin:22px 0;max-width:520px}
+#coolbar i{display:block;height:100%;background:linear-gradient(90deg,var(--fire),var(--cold))}
+#unwrap{flex:1;display:flex;gap:24px;min-height:0}
+#potcv{flex:1;border:1px solid var(--line);background:#0a0908;min-height:0}
+.unside{width:330px;display:flex;flex-direction:column;gap:12px}
+.potname{font-size:16px;color:var(--paper);line-height:1.5}
+.potev{color:var(--fire);font-size:13px;line-height:1.7}
+.prov{color:var(--dim);font-size:12px;line-height:1.75;border-left:2px solid var(--line2);padding-left:12px}
+.beatline{color:var(--dim2);font-size:12px;letter-spacing:.06em}
+
+/* ---------- shelf ---------- */
+.shelf{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.spot{border:1px solid var(--line);padding:11px 13px;background:var(--ink2)}
+.spot.broken{border-color:#4a2a22}
+.spot .sn{color:var(--paper);font-size:12.5px;line-height:1.4}
+.spot .se{color:var(--fire);font-size:11px;margin-top:5px}
+.spot .sp2{color:var(--dim2);font-size:10.5px;margin-top:7px}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);
+  border:1px solid var(--fire);background:#1c1209;padding:10px 18px;color:var(--hot);
+  font-size:13px;opacity:0;transition:.3s;pointer-events:none;z-index:9}
+.toast.on{opacity:1}
+</style></head>
+<body>
+<div id="app">
+
+  <section id="scr-title" class="scr on">
+    <h1>THE KILN</h1>
+    <div class="tag lc">you can't see in. you can't undo.<br>and it isn't only your work in there.</div>
+    <div style="display:flex;gap:12px">
+      <button class="prime lc" id="b-new">light the kiln</button>
+      <button class="lc" id="b-shelf0">the shelf</button>
+    </div>
+    <div class="cred lc">a DIRTY BOY DEVS game</div>
+  </section>
+
+  <section id="scr-cond" class="scr">
+    <div class="hd"><h2 class="lc">before you load</h2><span class="sub lc" id="firingno"></span></div>
+    <div class="note lc">read the kiln before you read the shelf. everything after the door is bricked up follows from what it's doing tonight — and you get to see all of it now.</div>
+    <div class="conds" id="conds"></div>
+    <div class="note lc" id="condread"></div>
+    <div class="foot"><span class="sp"></span><button class="prime lc" id="b-toload">the damp room →</button></div>
+  </section>
+
+  <section id="scr-load" class="scr">
+    <div class="hd"><h2 class="lc">the load</h2><span class="sub lc">position is chemistry. pick a piece, then pick its shelf.</span></div>
+    <div class="loadwrap">
+      <div class="damp">
+        <div class="k" style="margin-bottom:8px">the damp room</div>
+        <div class="shelfscroll" id="damproom"></div>
+        <div class="k" style="margin:12px 0 6px">★ the one you're hoping for</div>
+        <div class="lc" id="flagname" style="color:var(--dim);font-size:12px">click a placed piece to flag it. it comes out last.</div>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;min-height:0">
+        <div class="k" style="margin-bottom:8px">the kiln — 9 shelves</div>
+        <div class="kilngrid" id="kilngrid"></div>
+      </div>
+    </div>
+    <div class="foot">
+      <span class="lc" id="loadcount" style="color:var(--dim)"></span><span class="sp"></span>
+      <button class="lc" id="b-auto">stack it for me</button>
+      <button class="prime lc" id="b-brick">brick up the door →</button>
+    </div>
+  </section>
+
+  <section id="scr-fire" class="scr">
+    <div class="hd"><h2 class="lc">the firing</h2><span class="sub lc" id="clock"></span></div>
+    <div class="fire">
+      <div class="inst">
+        <div><div class="k">the spyhole</div><canvas class="spy" id="spy" width="560" height="300"></canvas></div>
+        <div><div class="k">the cone packs</div><canvas class="cones" id="conecv" width="600" height="300"></canvas></div>
+        <div class="card">
+          <div class="readout"><span class="k">pyrometer</span><span class="val" id="pyro">—</span></div>
+          <div class="readout" style="margin-top:6px"><span class="k">rate /hr</span><span class="val" id="rate" style="font-size:15px">—</span></div>
+          <div class="lc" style="color:var(--dim2);font-size:10.5px;margin-top:9px">it reads temperature. cones read heat work. they are not the same and it will cost you.</div>
+        </div>
+      </div>
+      <div class="stage">
+        <div class="window idle" id="win">
+          <div class="w1 lc" id="winname">not started</div>
+          <div class="w2 lc" id="winwant"></div>
+          <div class="bar"><i id="winbar" style="width:0"></i></div>
+        </div>
+        <div class="logbox" id="log"></div>
+      </div>
+      <div class="ctrls" id="ctrls"></div>
+    </div>
+    <div class="foot">
+      <div class="speed" id="speed"></div>
+      <span class="lc" id="firehint" style="color:var(--dim2);font-size:12px;margin-left:14px"></span>
+      <span class="sp"></span>
+      <button class="lc" id="b-shutdown">shut it down</button>
+    </div>
+  </section>
+
+  <section id="scr-cool" class="scr" style="align-items:center;justify-content:center;text-align:center">
+    <div class="k">it's cooling</div>
+    <div class="big" id="cooltemp">—</div>
+    <div id="coolbar" style="width:520px"><i style="width:0"></i></div>
+    <div class="note lc" id="coolnote" style="text-align:center"></div>
+    <div style="display:flex;gap:12px;margin-top:26px">
+      <button class="lc" id="b-wait">wait</button>
+      <button class="lc" id="b-open">open it</button>
+    </div>
+  </section>
+
+  <section id="scr-unload" class="scr">
+    <div class="hd"><h2 class="lc">the unload</h2><span class="sub lc" id="unprog"></span></div>
+    <div id="unwrap">
+      <canvas id="potcv"></canvas>
+      <div class="unside">
+        <div class="beatline lc" id="beatline"></div>
+        <div class="potname lc" id="potname"></div>
+        <div class="potev lc" id="potev"></div>
+        <div class="prov lc" id="potprov"></div>
+        <div style="flex:1"></div>
+        <button class="prime lc" id="b-next">take it out</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="scr-shelf" class="scr">
+    <div class="hd"><h2 class="lc">the shelf</h2><span class="sub lc" id="shelfsub"></span></div>
+    <div class="shelf" id="shelfgrid"></div>
+    <div class="foot"><span class="sp"></span><button class="lc" id="b-again">another firing</button></div>
+  </section>
+
+</div>
+<div class="toast" id="toast"></div>
+
+<script type="importmap">{"imports":{"three":"./lib/three.module.js"}}</script>
+<script type="module" src="./kiln/main.js"></script>
+</body></html>

@@ -1,0 +1,124 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>THE KILN — render gate</title>
+<style>
+  html,body{margin:0;background:#0d0c0b;color:#c9c0b2;font:13px/1.35 ui-monospace,Menlo,monospace;}
+  #wrap{position:relative;width:1860px;}
+  canvas{display:block;}
+  .lab{position:absolute;color:#8f877b;font-size:10.5px;letter-spacing:.01em;width:290px;text-align:center;pointer-events:none;}
+  .lab b{color:#d8cfc0;font-weight:500;}
+  .lab i{color:#6f685e;font-style:normal;}
+  body.squint .lab{display:none;}
+  #hdr{padding:18px 22px 8px;font-size:15px;color:#e6ddcd;letter-spacing:.04em;}
+  #hdr span{color:#7d766b;font-size:12px;}
+  body.squint #hdr{display:none;}
+</style></head>
+<body>
+<div id="hdr">THE KILN · the render gate <span>— 30 pots, one firing each. §24 step 1. if these don't sort into &gt;8 piles from across the room, the game is oatmeal.</span></div>
+<div id="wrap"><canvas id="c"></canvas></div>
+
+<script type="importmap">{"imports":{"three":"./lib/three.module.js"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import { makePot } from './kiln/pot.js';
+
+const Q = new URLSearchParams(location.search);
+const SQUINT = Q.has('squint');
+if (SQUINT) document.body.classList.add('squint');
+
+const COLS = 6, ROWS = 5, N = COLS*ROWS;
+const CELL = SQUINT ? 150 : 310;
+const GUT = SQUINT ? 0 : 62;            // label gutter under each row
+const W = COLS*CELL, H = ROWS*(CELL+GUT);
+
+const cv = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({canvas:cv, antialias:true, alpha:false});
+renderer.setPixelRatio(1);
+renderer.setSize(W,H,false);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.setScissorTest(true);
+document.getElementById('wrap').style.width = W+'px';
+
+// --- environment: a dim studio. one warm work light, cool ambient. ---
+function envTex(){
+  const c=document.createElement('canvas'); c.width=512; c.height=256;
+  const x=c.getContext('2d');
+  const g=x.createLinearGradient(0,0,0,256);
+  g.addColorStop(0,'#232833'); g.addColorStop(0.44,'#3a3730'); g.addColorStop(0.52,'#6a5a44');
+  g.addColorStop(0.62,'#2a2723'); g.addColorStop(1,'#0e0d0c');
+  x.fillStyle=g; x.fillRect(0,0,512,256);
+  // the work light
+  const w=x.createRadialGradient(150,96,4,150,96,90);
+  w.addColorStop(0,'#fff0d4'); w.addColorStop(0.5,'#8a7a5a'); w.addColorStop(1,'rgba(0,0,0,0)');
+  x.fillStyle=w; x.fillRect(0,0,512,256);
+  // a cold window
+  const b=x.createRadialGradient(392,80,4,392,80,64);
+  b.addColorStop(0,'#9fb4cc'); b.addColorStop(1,'rgba(0,0,0,0)');
+  x.fillStyle=b; x.fillRect(0,0,512,256);
+  const t=new THREE.CanvasTexture(c); t.mapping=THREE.EquirectangularReflectionMapping; t.colorSpace=THREE.SRGBColorSpace;
+  return t;
+}
+const pmrem=new THREE.PMREMGenerator(renderer); pmrem.compileEquirectangularShader();
+const env=pmrem.fromEquirectangular(envTex()).texture;
+
+const scene=new THREE.Scene();
+scene.environment=env;
+scene.background=new THREE.Color(0x100e0d);
+
+const key=new THREE.DirectionalLight(0xffd9a8, 2.3); key.position.set(-2.4,2.6,2.0); scene.add(key);
+const fill=new THREE.DirectionalLight(0x93b0d0, 0.55); fill.position.set(2.8,1.2,-1.4); scene.add(fill);
+const rim=new THREE.DirectionalLight(0xffffff, 0.35); rim.position.set(0.6,0.4,-3.0); scene.add(rim);
+scene.add(new THREE.HemisphereLight(0x4a4640, 0x141210, 0.35));
+
+const cam=new THREE.PerspectiveCamera(26, 1, 0.05, 100);
+
+const wrap=document.getElementById('wrap');
+const rows=[];
+const SEED0 = +(Q.get('seed')||1);
+
+for(let i=0;i<N;i++){
+  const seed = SEED0 + i*7919;
+  const mesh = makePot(seed);
+  const hgt = mesh.userData.height;
+  mesh.position.y = -hgt/2;
+  const holder = new THREE.Group(); holder.add(mesh);
+  holder.rotation.y = 0.55;
+  scene.add(holder);
+
+  const col=i%COLS, row=(i/COLS)|0;
+  // frame the pot by BOTH its height and its widest radius — a plate is 3x wider
+  // than it is tall and framing on height alone shoots it straight off the cell.
+  const halfTan = Math.tan(26*Math.PI/360);           // fov/2
+  const maxR = mesh.userData.maxR;
+  const d = Math.max(hgt/2/halfTan, maxR/halfTan) * 1.26;
+  // a plate is 3x wider than it is tall: look DOWN on flat forms or you get an
+  // edge-on smear. elevation scales with how squat the pot is.
+  const squat = Math.min(1, (2*maxR)/Math.max(hgt,1e-3) / 2.2);
+  cam.position.set(0, hgt*0.10 + d*squat*0.52, d*(1-squat*0.18));
+  cam.lookAt(0, 0, 0);
+  cam.updateProjectionMatrix();
+
+  const vx = col*CELL, vy = H - (row*(CELL+GUT) + CELL);
+  renderer.setViewport(vx, vy, CELL, CELL);
+  renderer.setScissor(vx, vy, CELL, CELL);
+  renderer.render(scene, cam);
+
+  scene.remove(holder);
+
+  if(!SQUINT){
+    const nm = mesh.userData.name;
+    const [form, glaze, ...rest] = nm.split(' · ');
+    const d0=document.createElement('div'); d0.className='lab';
+    d0.style.left = (vx + CELL/2 - 145) + 'px';
+    d0.style.top  = (row*(CELL+GUT) + CELL + 6) + 'px';
+    d0.innerHTML = `<b>${form} · ${glaze}</b><br>${rest.join(', ')||'plain and sound'}<br><i>${mesh.userData.pot.posKey} · seed ${seed}${mesh.userData.pot.copperFlip?' · COPPER FLIPPED':''}</i>`;
+    wrap.appendChild(d0);
+  }
+  mesh.geometry.dispose();
+}
+wrap.style.height = H + 'px';
+window.__gateDone = true;
+console.log('[gate] rendered', N, 'pots');
+</script>
+</body></html>

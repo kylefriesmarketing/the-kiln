@@ -1,0 +1,4 @@
+node_modules/
+*.log
+ui-*.png
+shot-*.png
