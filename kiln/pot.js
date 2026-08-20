@@ -379,3 +379,150 @@ export function makePot(seed, opts={}){
   mesh.userData={ pot:p, name:nameOf(p), height:prof.scaleY, maxR };
   return mesh;
 }
+
+// ---------------------------------------------------------------------------
+// THE FLAT PAINTER — a pot drawn with 2D canvas and no WebGL at all.
+// ⚠️ WHY THIS EXISTS (Kyle, 2026-08-19): "i cant see the rewards, it doesnt show
+// me any of the cool pottery we made." A resize loop had been growing the WebGL
+// drawing buffer until the context died, and once a context is lost EVERY pot
+// after it is black. The pots are the entire payoff of this game (§4.6, §8), so
+// the payoff must not depend on a GPU staying alive. This path uses the same
+// seed, the same profile, the same glaze ramp and the same events as the 3D one,
+// so it is the same pot — just photographed flat.
+// It is also what the shelf uses, because a shelf of names is not a collection.
+// ---------------------------------------------------------------------------
+export function drawPotFlat(ctx, p, W, H){
+  const F=FORMS[p.formKey], G=GLAZES[p.effGlaze];
+  const pts=catmull(F.ctl, 90);
+  const maxR=Math.max(...pts.map(q=>q[0])), worldH=F.h;
+  const s=Math.min((W*0.60)/(2*maxR), (H*0.74)/worldH);
+  const cx=W/2, base=H*0.87;
+  const X=r=>cx+r*s, Y=t=>base-t*worldH*s;
+  const has=k=>p.events.find(e=>e.k===k);
+  const ev=k=>{ const e=has(k); return e?e.i:0; };
+  const rgb=c=>'rgb('+(c[0]|0)+','+(c[1]|0)+','+(c[2]|0)+')';
+  // the same thickness→colour ramp the 3D surface uses, so the two agree
+  const at=t=>rgb(rampColor(G,(clamp(t,0,1)-TUNE.contrastLo)/(TUNE.contrastHi-TUNE.contrastLo)));
+
+  ctx.clearRect(0,0,W,H);
+
+  // the shelf it is standing on
+  ctx.fillStyle='rgba(0,0,0,0.42)';
+  ctx.beginPath(); ctx.ellipse(cx,base+3,maxR*s*1.25,maxR*s*0.24,0,0,7); ctx.fill();
+
+  // the silhouette: up the right side, mirrored down the left
+  const outline=()=>{ ctx.beginPath();
+    ctx.moveTo(X(pts[0][0]),Y(pts[0][1]));
+    for(const q of pts) ctx.lineTo(X(q[0]),Y(q[1]));
+    for(let i=pts.length-1;i>=0;i--) ctx.lineTo(X(-pts[i][0]),Y(pts[i][1]));
+    ctx.closePath(); };
+
+  // glaze gathers downward, so it reads thin over the rim and thick at the foot
+  const thick=clamp(p.applied,0.12,1.05);
+  const g=ctx.createLinearGradient(0,Y(1),0,Y(0));
+  g.addColorStop(0.00, at(thick*0.52));
+  g.addColorStop(0.28, at(thick*0.78));
+  g.addColorStop(0.62, at(thick));
+  g.addColorStop(1.00, at(thick*(1+TUNE.gravity*0.42)));
+  outline(); ctx.fillStyle=g; ctx.fill();
+
+  ctx.save(); outline(); ctx.clip();
+
+  // form shading — lit left shoulder, dark right flank, so it reads round
+  const rd=ctx.createLinearGradient(X(-maxR),0,X(maxR),0);
+  rd.addColorStop(0,'rgba(255,236,205,0.20)'); rd.addColorStop(0.34,'rgba(255,255,255,0.05)');
+  rd.addColorStop(0.72,'rgba(0,0,0,0.20)');    rd.addColorStop(1,'rgba(0,0,0,0.42)');
+  ctx.fillStyle=rd; ctx.fillRect(0,0,W,H);
+
+  // throwing rings
+  ctx.strokeStyle='rgba(0,0,0,0.10)'; ctx.lineWidth=Math.max(1,H/300);
+  for(let i=1;i<F.rings;i++){ const t=i/F.rings;
+    ctx.beginPath(); ctx.moveTo(X(-maxR),Y(t)); ctx.lineTo(X(maxR),Y(t)); ctx.stroke(); }
+
+  // flashing / ash fly — a warm blush down the side the flame touched
+  if(ev('flashing')||ev('ashfly')){
+    const f=ctx.createLinearGradient(X(-maxR),0,X(maxR*0.2),0);
+    f.addColorStop(0,'rgba(255,168,86,'+(0.16+0.26*Math.max(ev('flashing'),ev('ashfly'))).toFixed(2)+')');
+    f.addColorStop(1,'rgba(255,168,86,0)');
+    ctx.fillStyle=f; ctx.fillRect(0,0,W,H);
+  }
+  // carbon trap — a soft grey-black shadow on the lee side
+  if(ev('carbontrap')){
+    const f=ctx.createLinearGradient(X(maxR),0,X(-maxR*0.1),0);
+    f.addColorStop(0,'rgba(26,24,24,'+(0.30+0.40*ev('carbontrap')).toFixed(2)+')');
+    f.addColorStop(1,'rgba(26,24,24,0)');
+    ctx.fillStyle=f; ctx.fillRect(0,0,W,H);
+  }
+  // runs — §8 calls a drip the visible fingerprint of a decision you made blind
+  if(ev('run')){
+    const n=2+Math.round(ev('run')*3);
+    for(let i=0;i<n;i++){
+      const u=(i+0.5)/n, rx=X((u*2-1)*maxR*0.82);
+      const top=Y(0.62-0.22*u), len=(0.26+0.34*ev('run'))*worldH*s;
+      const w=Math.max(1.5,(W/150)*(0.7+ev('run')));
+      const gr=ctx.createLinearGradient(0,top,0,top+len);
+      gr.addColorStop(0,at(thick*1.12)); gr.addColorStop(1,at(thick*(1+TUNE.gravity*0.6)));
+      ctx.fillStyle=gr; ctx.fillRect(rx-w/2,top,w,len);
+      ctx.beginPath(); ctx.ellipse(rx,top+len,w*0.85,w*1.15,0,0,7); ctx.fill();
+    }
+  }
+  // pooling in the well
+  if(ev('pool')&&F.open){
+    ctx.fillStyle=at(thick*1.3); ctx.globalAlpha=0.55;
+    ctx.beginPath(); ctx.ellipse(cx,Y(0.10),maxR*s*0.52,maxR*s*0.14,0,0,7); ctx.fill();
+    ctx.globalAlpha=1;
+  }
+  // crawling — bare clay where a thick coat let go
+  if(ev('crawl')){
+    const n=3+Math.round(ev('crawl')*5);
+    ctx.fillStyle='rgb(176,150,128)';
+    for(let i=0;i<n;i++){ const a=(i*2.7)%1, b=(i*0.61)%1;
+      ctx.beginPath(); ctx.ellipse(X((a*2-1)*maxR*0.8),Y(0.18+b*0.6),
+        W/60*(0.6+b), W/70*(0.6+a),0,0,7); ctx.fill(); }
+  }
+  // crystals
+  if(ev('crystal')){
+    ctx.fillStyle='rgba(255,248,225,0.72)';
+    for(let i=0;i<70;i++){ const a=(i*0.732)%1, b=(i*0.317)%1;
+      ctx.beginPath(); ctx.arc(X((a*2-1)*maxR*0.86),Y(0.12+b*0.76),Math.max(0.7,W/260),0,7); ctx.fill(); }
+  }
+  // oil spot and hare's fur — iron doing what iron does
+  if(ev('oilspot')){ ctx.fillStyle='rgba(226,222,210,0.66)';
+    for(let i=0;i<26;i++){ const a=(i*0.51)%1,b=(i*0.83)%1;
+      ctx.beginPath(); ctx.arc(X((a*2-1)*maxR*0.8),Y(0.28+b*0.5),W/150,0,7); ctx.fill(); } }
+  if(ev('harefur')){ ctx.strokeStyle='rgba(214,164,110,0.42)'; ctx.lineWidth=Math.max(0.8,W/300);
+    for(let i=0;i<34;i++){ const a=(i*0.394)%1;
+      const x=X((a*2-1)*maxR*0.88); ctx.beginPath();
+      ctx.moveTo(x,Y(0.74)); ctx.lineTo(x+(a-0.5)*W/40,Y(0.20)); ctx.stroke(); } }
+  // crazing
+  if(ev('craze')){ ctx.strokeStyle='rgba(255,255,255,0.20)'; ctx.lineWidth=Math.max(0.6,W/420);
+    for(let i=0;i<40;i++){ const a=(i*0.618)%1,b=(i*0.241)%1;
+      const x=X((a*2-1)*maxR*0.9), y=Y(0.12+b*0.8);
+      ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x+(b-0.5)*W/22,y+(a-0.5)*H/22); ctx.stroke(); } }
+  // break over the rim — thin glaze at every edge, the signature of a good iron glaze
+  if(ev('break')){
+    ctx.strokeStyle=at(thick*0.30); ctx.lineWidth=Math.max(2,H/90);
+    ctx.beginPath(); ctx.moveTo(X(-pts[pts.length-1][0]),Y(1));
+    ctx.lineTo(X(pts[pts.length-1][0]),Y(1)); ctx.stroke();
+  }
+  ctx.restore();
+
+  // the mouth, for an open form — you should be able to see it is a bowl
+  if(F.open){
+    const rimR=pts[pts.length-1][0];
+    ctx.beginPath(); ctx.ellipse(cx,Y(1),rimR*s,rimR*s*0.26,0,0,7);
+    ctx.fillStyle=at(thick*1.18); ctx.fill();
+    ctx.strokeStyle='rgba(0,0,0,0.35)'; ctx.lineWidth=Math.max(1,H/220); ctx.stroke();
+  }
+
+  // a dunt is a crack, and it is the one mark here that is not decoration
+  if(ev('dunt')){
+    ctx.strokeStyle='rgba(18,14,12,0.92)'; ctx.lineWidth=Math.max(1.4,H/160);
+    ctx.beginPath(); let x=cx+maxR*s*0.12, y=Y(0.94);
+    ctx.moveTo(x,y);
+    for(let i=0;i<7;i++){ x+=((i*37%11)/11-0.5)*W/16; y+=worldH*s*0.12; ctx.lineTo(x,y); }
+    ctx.stroke();
+  }
+  // outline last, so the form always reads even under a heavy surface
+  outline(); ctx.strokeStyle='rgba(12,10,9,0.65)'; ctx.lineWidth=Math.max(1,H/260); ctx.stroke();
+}

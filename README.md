@@ -139,6 +139,23 @@ cooling rate feeds `p.coolRate`, which decides crystal and hare's fur formation 
 retuning it silently would move the surface generator. The REAL-time wait is the
 part the player experiences and that is tuned. Change it with a census, not a hunch.
 
+**⚠️ THE POTS MUST NEVER DEPEND ON A GPU.** They are the entire payoff (§4.6, §8).
+- The unload canvas is **absolutely positioned inside `#potbox`** and must stay that
+  way. A canvas carries an intrinsic size — its width/height attributes, which
+  `setSize` writes as `clientWidth × devicePixelRatio` — and an *in-flow flex item*
+  can feed that back into layout and grow without bound. That produced a black screen
+  that "just gets wider and wider" and a locked tab. **Never put `flex` on `#potcv`.**
+- `resize()` measures the BOX, clamps to sane bounds, and is idempotent. Measuring the
+  canvas means measuring the very thing you are about to resize.
+- `nextPot()` computes the pot with `firePot()` FIRST and only then asks a renderer to
+  draw it. It used to read the pot back out of `mesh.userData`, so any 3D failure took
+  the name, the events and the provenance down with it.
+- `drawPotFlat()` in `pot.js` draws the same pot in 2D with no WebGL at all — same seed,
+  same profile, same ramp, same events. It is the fallback when a context is lost or
+  missing, and it is what the shelf uses for every thumbnail. Verified by killing the
+  context with `WEBGL_lose_context` on pot one: all nine still appear, the unload still
+  advances, and the firing still reaches its verdict.
+
 **Traps worth knowing before you touch this:**
 - `tests/census.mjs` imports `pot.js`, which imports the bare specifier `three`. Node
   needs a shim: `node_modules/three/` re-exporting `../../lib/three.module.js`

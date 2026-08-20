@@ -8,7 +8,7 @@ import { judge, counterfactuals, settle, offerCommissions } from './verdict.js';
 import { logReading, truthOf, ensure as nbEnsure, isConfirmed, pagesFor,
          confirmedCount, totalInstruments, refirable } from './notebook.js';
 import { newFiring, step, setControl, harvest, openKiln, coneDown, CONE_ORDER, hhmm, lcg } from './sim.js';
-import { makePot, nameOf } from './pot.js';
+import { makePot, nameOf, firePot, drawPotFlat } from './pot.js';
 import * as A from './audio.js';
 
 const $ = s => document.querySelector(s);
@@ -556,7 +556,7 @@ let three=null;
 function initThree(){
   const cv=$('#potcv');
   const r=new THREE.WebGLRenderer({canvas:cv,antialias:true});
-  r.setPixelRatio(Math.min(2,devicePixelRatio)); r.toneMapping=THREE.ACESFilmicToneMapping;
+  r.setPixelRatio(Math.min(1.5,devicePixelRatio||1)); r.toneMapping=THREE.ACESFilmicToneMapping;
   r.toneMappingExposure=1.15; r.outputColorSpace=THREE.SRGBColorSpace;
   const sc=new THREE.Scene(); sc.background=new THREE.Color(0x0a0908);
   const ec=document.createElement('canvas'); ec.width=512; ec.height=256;
@@ -570,7 +570,14 @@ function initThree(){
   sc.add(new THREE.HemisphereLight(0x4a4640,0x141210,0.35));
   const cam=new THREE.PerspectiveCamera(26,1,0.05,100);
   const holder=new THREE.Group(); sc.add(holder);
-  three={r,sc,cam,holder};
+  three={r,sc,cam,holder,dead:false};
+  // a lost context is recoverable as far as the PLAYER is concerned: switch to the
+  // flat painter and carry on. Losing the GPU must never cost them the reveal.
+  cv.addEventListener('webglcontextlost', e=>{ e.preventDefault(); three.dead=true;
+    const p=G.results[G.unIdx];
+    if(p) flatPot(p, firePot(p.seed,{form:p.form,glaze:p.glaze,pos:p.pos,heat:p.heat,red:p.red,cool:p.cool,thick:p.thick||0}));
+    toast('the renderer dropped out. showing them flat instead.');
+  });
   // ⚠️⚠️ THE UNLOAD WAS A BLACK SCREEN, AND THIS IS WHERE IT LIVED. (Kyle, 2026-08-19)
   // The renderer used to be built while #scr-unload was still display:none, so the
   // canvas measured 0×0. That does three separate fatal things at once:
@@ -581,14 +588,21 @@ function initThree(){
   //      first frame was hostage to an async ResizeObserver arriving first.
   // Never size a renderer off a hidden element. Never divide to get an aspect
   // without guarding the denominator. Never let the first frame depend on rAF.
+  // ⚠️ measure the BOX, never the canvas. Measuring the canvas means measuring a
+  // thing whose size we are about to set, which is how a resize loop starts.
+  const box=cv.parentElement;
+  let lastW=0, lastH=0;
   const resize=()=>{
-    // fall back to the wrapper, then to a sane default — never 0, never NaN
-    const w=cv.clientWidth||cv.parentElement?.clientWidth||960;
-    const h=cv.clientHeight||cv.parentElement?.clientHeight||620;
+    const w=Math.max(160,Math.min(3840, box.clientWidth||960));
+    const h=Math.max(120,Math.min(2160, box.clientHeight||620));
+    if(w===lastW && h===lastH) return;      // idempotent: a no-op cannot oscillate
+    lastW=w; lastH=h;
     r.setSize(w,h,false); cam.aspect=w/h; cam.updateProjectionMatrix();
   };
   three.resize=resize;
-  new ResizeObserver(resize).observe(cv); resize();
+  // observe the BOX, and cap the pixel ratio — a 4K DPR-2 buffer is 33M pixels
+  // per pot and this scene does not need it.
+  new ResizeObserver(resize).observe(box); resize();
   (function spin(){ requestAnimationFrame(spin);
      if(!document.getElementById('scr-unload').classList.contains('on')) return;
      holder.rotation.y+=0.0035; r.render(sc,cam); })();
@@ -640,46 +654,80 @@ function toUnload(){
   // ⚠️ show() FIRST. initThree() measures the canvas, and a display:none canvas
   // measures 0×0 — that was the black screen. Order here is load-bearing.
   show('scr-unload'); teach('unload');
-  if(!three) initThree(); else three.resize();
+  // ⚠️ never let a GPU failure throw out of here — the unload is the payoff.
+  try{ if(!three) initThree(); else three.resize(); }
+  catch(e){ console.warn('[the kiln] no webgl, drawing flat:', e.message); three={dead:true}; }
   nextPot();
+}
+
+// ---------------------------------------------------------------------------
+// The no-GPU path. Same seed, same profile, same ramp, same events — the same
+// pot, photographed flat instead of lit. This exists because a lost WebGL
+// context used to mean every pot after it was a black rectangle. (Kyle, 08-19)
+// ---------------------------------------------------------------------------
+function flatPot(p, pot){
+  const box=$('#potbox'), fc=$('#potflat');
+  box.classList.add('flat');
+  const w=Math.max(160,box.clientWidth||900), h=Math.max(120,box.clientHeight||600);
+  fc.width=w; fc.height=h;
+  drawPotFlat(fc.getContext('2d'), pot, w, h);
 }
 
 function nextPot(){
   G.unIdx++;
   if(G.unIdx>=G.results.length){ finish(); return; }
   const p=G.results[G.unIdx];
-  // ⚠️ dispose the previous pot FIRST. Each one owns three 768² canvas textures;
-  // nine of them undisposed is ~60MB of GPU memory and it took the tab down under
-  // swiftshader. clear() detaches but does not free.
-  three.holder.traverse(o=>{ if(o.geometry) o.geometry.dispose();
-    if(o.material){ for(const k of ['map','roughnessMap','normalMap']) o.material[k]?.dispose();
-      o.material.dispose(); } });
-  three.holder.clear();
-  const mesh=makePot(p.seed,{ form:p.form, glaze:p.glaze, pos:p.pos,
-                              heat:p.heat, red:p.red, cool:p.cool, thick:p.thick||0 });
-  three.holder.add(mesh);
-  const hg=mesh.userData.height; mesh.position.y=-hg/2;
-  const halfTan=Math.tan(26*Math.PI/360), maxR=mesh.userData.maxR;
-  const d=Math.max(hg/2/halfTan,maxR/halfTan)*1.3;
-  const squat=Math.min(1,(2*maxR)/Math.max(hg,1e-3)/2.2);
-  three.cam.position.set(0,hg*0.10+d*squat*0.5,d*(1-squat*0.18));
-  three.cam.lookAt(0,0,0);
-  // re-measure, THEN project, THEN draw one frame right now. rAF is suspended in a
-  // hidden pane and ResizeObserver is async; neither may be relied on for frame one.
-  three.resize();
-  three.cam.updateProjectionMatrix();
-  three.r.render(three.sc, three.cam);
 
-  const pot=mesh.userData.pot;
+  // ⚠️ THE POT IS DATA. It exists whether or not a GPU does, so it is computed
+  // FIRST and the renderer is only ever asked to draw it. The previous version
+  // read the pot back out of mesh.userData, which meant every failure in the 3D
+  // path took the name, the events and the provenance down with it — and a lost
+  // context turned the entire reveal into a stuck black rectangle. (Kyle, 08-19)
+  const opts={ form:p.form, glaze:p.glaze, pos:p.pos,
+               heat:p.heat, red:p.red, cool:p.cool, thick:p.thick||0 };
+  const pot=firePot(p.seed, opts);
+  const potName=nameOf(pot);
   const dunted=pot.events.some(e=>e.k==='dunt');
+
+  // draw it — in 3D if there is a live context, flat if there is not. Either way
+  // it is the same pot: same seed, same profile, same ramp, same events.
+  let drew3D=false;
+  const alive = three && !three.dead && three.holder && three.r &&
+                !(three.r.getContext && three.r.getContext()?.isContextLost?.());
+  if(alive){
+    try{
+      // dispose the previous pot FIRST. Each owns three 768² canvas textures, and
+      // nine undisposed is ~60MB of GPU memory — it took the tab down under swiftshader.
+      three.holder.traverse(o=>{ if(o.geometry) o.geometry.dispose();
+        if(o.material){ for(const k of ['map','roughnessMap','normalMap']) o.material[k]?.dispose();
+          o.material.dispose(); } });
+      three.holder.clear();
+      const mesh=makePot(p.seed, opts);
+      three.holder.add(mesh);
+      const hg=mesh.userData.height; mesh.position.y=-hg/2;
+      const halfTan=Math.tan(26*Math.PI/360), maxR=mesh.userData.maxR;
+      const d=Math.max(hg/2/halfTan,maxR/halfTan)*1.3;
+      const squat=Math.min(1,(2*maxR)/Math.max(hg,1e-3)/2.2);
+      three.cam.position.set(0,hg*0.10+d*squat*0.5,d*(1-squat*0.18));
+      three.cam.lookAt(0,0,0);
+      // re-measure, THEN project, THEN draw one frame right now. rAF is suspended in
+      // a hidden pane and ResizeObserver is async; neither is reliable for frame one.
+      three.resize();
+      three.cam.updateProjectionMatrix();
+      three.r.render(three.sc, three.cam);
+      drew3D=true;
+    }catch(e){ console.warn('[the kiln] 3D pot failed, drawing flat:', e.message); if(three) three.dead=true; }
+  }
+  if(drew3D) $('#potbox').classList.remove('flat');
+  else flatPot(p, pot);
   // the verdict judges exactly the objects that came out of the door — same seed,
   // same opts, so this is the pot on screen and not a second roll of it.
   G.fired.push({ mine:!!p.mine, owner:p.owner||'you', form:p.form, glaze:p.glaze,
                  effGlaze:pot.effGlaze, copperFlip:pot.copperFlip, pos:p.pos,
-                 events:pot.events, sound:!dunted, name:mesh.userData.name });
+                 events:pot.events, sound:!dunted, name:potName });
   A.potRing(!dunted);
   const owner = p.mine?'yours':(MEMBERS.find(m=>m.id===p.owner)||{n:'the studio'}).n;
-  const [form,glaze,...rest]=mesh.userData.name.split(' · ');
+  const [form,glaze,...rest]=potName.split(' · ');
   $('#unprog').textContent=`${G.unIdx+1} of ${G.results.length}`;
   $('#beatline').textContent = G.unIdx===G.results.length-1 && G.flag ? '★ the one you were hoping for' : `${POSITIONS[p.pos].name} · ${owner}`;
   $('#potname').textContent=`${form} · ${glaze}`;
@@ -687,9 +735,13 @@ function nextPot(){
   $('#potprov').textContent=provenance(p,pot);
   $('#b-next').textContent = G.unIdx>=G.results.length-1 ? 'that’s the load' : 'take it out';
   // record it. the pot regenerates from seed + firing, never from pixels.
+  // §11 — storage is seed + recipe + what the fire did, NEVER pixels, so the pot
+  // regenerates identically. heat/red/cool/thick are what firePot needs to rebuild
+  // this exact object later; without them the shelf could only approximate it.
   SAVE.pots.push({ seed:p.seed, form:p.form, glaze:p.glaze, eff:pot.effGlaze, pos:p.pos,
-                   name:mesh.userData.name, events:pot.events.map(e=>e.k), sound:!dunted,
-                   firing:SAVE.firings+1, prov:provenance(p,pot), owner:p.owner||'you' });
+                   name:potName, events:pot.events.map(e=>e.k), sound:!dunted,
+                   firing:SAVE.firings+1, prov:provenance(p,pot), owner:p.owner||'you',
+                   heat:p.heat, red:p.red, cool:p.cool, thick:p.thick||0, refires:p.refires||0 });
   if(dunted) SAVE.broken++;
   for(const e of pot.events) SAVE.effects[e.k]=(SAVE.effects[e.k]||0)+1;
 }
@@ -712,7 +764,11 @@ function provenance(p,pot){
 function finish(){
   SAVE.firings++;
   // the collectible: a firing where nothing broke. (§20)
-  const perfect=G.results.every((p,i)=>SAVE.pots[SAVE.pots.length-G.results.length+i].sound);
+  // ⚠️ this used to index SAVE.pots by arithmetic on its length, which throws the
+  // moment a single pot's push is skipped for any reason. Count what this firing
+  // actually produced instead.
+  const mine=SAVE.pots.filter(x=>x.firing===SAVE.firings);
+  const perfect=mine.length>0 && mine.every(x=>x.sound);
   if(perfect){ SAVE.kilnGod=true; toast('nothing broke. the kiln god stays on the arch.'); A.chime(true); }
   drawVerdict(); save(); show('scr-verdict'); teach('verdict');
 }
@@ -874,9 +930,20 @@ function drawShelf(){
   for(const p of pots){
     const d=el('div','spot'+(p.sound?'':' broken'));
     const [form,glaze,...rest]=p.name.split(' · ');
-    d.innerHTML=`<div class="sn lc">${form} · ${glaze}</div>
-      <div class="se lc">${rest.join(', ')||'plain and sound'}</div>
-      <div class="sp2 lc">${p.prov||''}</div>`;
+    // the pot itself, regenerated from its seed. a shelf of names is not a collection.
+    const cv=el('canvas'); cv.width=340; cv.height=300;
+    try{
+      const pot = p.heat!==undefined
+        ? firePot(p.seed,{ form:p.form, glaze:p.glaze, pos:p.pos, heat:p.heat, red:p.red, cool:p.cool, thick:p.thick||0 })
+        // older saves predate heat/red/cool — draw what we know rather than nothing
+        : { formKey:p.form, effGlaze:p.eff||p.glaze, applied:0.55,
+            events:(p.events||[]).map(k=>({k,zone:'belly',i:0.72})) };
+      drawPotFlat(cv.getContext('2d'), pot, cv.width, cv.height);
+    }catch(e){ /* a shelf that cannot draw one pot must still show the rest */ }
+    d.appendChild(cv);
+    d.appendChild(el('div','sn lc',`${form} · ${glaze}`));
+    d.appendChild(el('div','se lc',rest.join(', ')||'plain and sound'));
+    d.appendChild(el('div','sp2 lc',p.prov||''));
     G2.appendChild(d);
   }
 }

@@ -209,7 +209,27 @@ canvas.cones{width:100%;height:150px;border:1px solid var(--line);background:#0f
 #coolbar{height:4px;background:var(--line);margin:22px 0;max-width:520px}
 #coolbar i{display:block;height:100%;background:linear-gradient(90deg,var(--fire),var(--cold))}
 #unwrap{flex:1;display:flex;gap:24px;min-height:0}
-#potcv{flex:1;border:1px solid var(--line);background:#0a0908;min-height:0}
+/* ⚠️⚠️ THE CANVAS MUST NOT BE A FLEX ITEM. A <canvas> carries an intrinsic size
+   (its width/height ATTRIBUTES, which setSize writes as clientWidth × devicePixelRatio),
+   and an in-flow flex item can feed that back into layout — measure, grow, measure,
+   grow. Kyle got a black screen that "just gets wider and wider" and a locked tab.
+   Absolutely positioned inside a relative box, the canvas is out of flow: its buffer
+   size CANNOT affect the box that measures it. Do not put flex on #potcv again. */
+#potbox{flex:1;min-width:0;min-height:0;position:relative;border:1px solid var(--line);background:#0a0908;overflow:hidden}
+#potcv{position:absolute;top:0;left:0;width:100%;height:100%;display:block}
+/* the no-GPU path. Same pot, same seed, drawn flat — see drawPotFlat in pot.js. */
+#potflat{position:absolute;top:0;left:0;width:100%;height:100%;display:none}
+#potbox.flat #potcv{display:none}
+#potbox.flat #potflat{display:block}
+/* the shelf, as a shelf of THINGS rather than a list of names */
+.shelf{display:grid;grid-template-columns:repeat(auto-fill,minmax(184px,1fr));gap:14px;overflow:auto;align-content:start}
+.spot{border:1px solid var(--line);background:var(--ink2);padding:0 0 11px;display:flex;flex-direction:column}
+.spot canvas{width:100%;height:150px;display:block;background:#0d0b0a}
+.spot .sn{color:var(--paper);font-size:12.5px;line-height:1.35;padding:10px 11px 0}
+.spot .se{color:var(--fire);font-size:11px;padding:4px 11px 0;line-height:1.4}
+.spot .sp2{color:var(--dim2);font-size:10.5px;padding:7px 11px 0;line-height:1.5}
+.spot.broken{border-color:#4a2a22}
+.spot.broken .sn{color:#c9a08c}
 .unside{width:330px;display:flex;flex-direction:column;gap:12px}
 .potname{font-size:16px;color:var(--paper);line-height:1.5}
 .potev{color:var(--fire);font-size:13px;line-height:1.7}
@@ -358,7 +378,7 @@ canvas.cones{width:100%;height:150px;border:1px solid var(--line);background:#0f
     <div class="hd"><h2 class="lc">the unload</h2><span class="sub lc" id="unprog"></span></div>
     <div class="guide" id="g-unload"></div>
     <div id="unwrap">
-      <canvas id="potcv"></canvas>
+      <div id="potbox"><canvas id="potcv"></canvas><canvas id="potflat"></canvas></div>
       <div class="unside">
         <div class="beatline lc" id="beatline"></div>
         <div class="potname lc" id="potname"></div>
