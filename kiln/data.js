@@ -381,3 +381,92 @@ export const PRIMER = [
        counter-intuitively, too MUCH gas: the excess draft carries heat away, so cut it back.
        DUNTING — cooled too fast, or you opened it hot.` },
 ];
+
+// ---------------------------------------------------------------------------
+// THE NOTEBOOK (M2). §10.
+// No tutorial, no tooltips — you LOG WHAT YOU BELIEVE while the kiln is running,
+// and the notebook confirms nothing until you have been right three times running.
+// That is Obra Dinn's confirm-in-threes, and it does four jobs at once: it teaches
+// the instruments with no manual, it makes confirmation a reward instead of a probe,
+// it forbids brute-force guessing (a wrong reading resets the run), and it produces
+// the codex, the progression and the fairness artefact as a side effect.
+//
+// ⚠️ READINGS ARE NEVER CONFIRMED INDIVIDUALLY. The UI must never say "correct" —
+// it records, and stays silent, until the third one lands and the page opens. If a
+// future session adds a per-reading tick, it has thrown away the whole mechanism.
+// ---------------------------------------------------------------------------
+export const INSTRUMENTS = {
+  flame: {
+    name:'the flame', at:'the spyhole',
+    ask:'what is the fire doing?',
+    // read off S.atm. bands match the sim's own: reduction begins at 0.30 (redRun),
+    // and over-reduction throws black smoke above 0.85 with the gas up.
+    read:'atm',
+    opts:[
+      { k:'ox',      label:'oxidising',    hint:'short, blue, bushy', max:0.08 },
+      { k:'neutral', label:'neutral',      hint:'green-tinted',       max:0.30 },
+      { k:'red',     label:'reducing',     hint:'long, soft, licking orange', max:0.85 },
+      { k:'heavy',   label:'over-reduced', hint:'smoking, and you should have seen it coming', max:99 },
+    ],
+  },
+  climb: {
+    name:'the climb', at:'the pyrometer',
+    ask:'where is the heat going?',
+    read:'rate',
+    opts:[
+      { k:'falling', label:'falling',       hint:'losing ground',            max:-30 },
+      { k:'holding', label:'holding',       hint:'flat — a soak, or a stall', max:60 },
+      { k:'steady',  label:'climbing',      hint:'the honest working rate',   max:260 },
+      { k:'hard',    label:'climbing hard', hint:'fast enough to shock the ware', max:1e9 },
+    ],
+  },
+  cones: {
+    name:'the cone pack', at:'the lower spyhole',
+    ask:'how much work has the fire done?',
+    // ⚠️ the whole point of this instrument: cones read HEAT WORK, the integral of
+    // time and temperature. Getting this one confirmed is what teaches that the
+    // pyrometer is not telling you what you think it is telling you.
+    read:'hw',
+    opts:[
+      { k:'none',   label:'nothing down yet',  hint:'still drying',                cone:'012' },
+      { k:'low',    label:'the low cones',     hint:'012 through 06 — reduction country', cone:'06' },
+      { k:'middle', label:'climbing through',  hint:'past the low pack, short of 6', cone:'6' },
+      { k:'close',  label:'closing on cone 10',hint:'6, 8, 9 going over',           cone:'10' },
+      { k:'past',   label:'cone 10 or past it',hint:'done, or overfiring',          cone:null },
+    ],
+  },
+};
+
+// What fills in, permanently, in your own hand, when an instrument confirms.
+// This is where the pyrometer lesson finally lands — after YOU diagnosed it.
+export const NOTEBOOK_PAGES = {
+  flame: [
+    `a rich fire has more fuel than air, so it takes its oxygen back out of the glaze. that is reduction, and it is the only reason any of this is worth doing.`,
+    `read it at the peep, not on a dial. long, soft, licking orange means the kiln is hungry. short blue and bushy means it is burning clean. green-tinted sits between them.`,
+    `black smoke at the chimney is not more reduction, it is waste — carbon in the clay, dull dead glazes, and gas you paid for going out of the stack.`,
+  ],
+  climb: [
+    `about 150°F an hour through the middle is the honest working rate. faster and the quartz inversion at 1063° will crack ware you will not see fail for another eight hours.`,
+    `flat is not always a stall. at the top it is a soak, and a soak is heat work, which is the thing you are actually buying.`,
+    `⚠️ a real stall near the top is usually TOO MUCH GAS, not too little. the excess draft carries the heat out of the stack faster than it arrives. cut the gas back and it climbs again. this one is backwards and it will catch you twice.`,
+  ],
+  cones: [
+    `a cone measures HEAT WORK — temperature multiplied by the time you spent there — and bends when it has had enough of both.`,
+    `⚠️ so the pyrometer lies. not by being broken: by answering a different question. a kiln taken fast to cone 10's temperature has not done cone 10's work, and the pots come out dry and underdeveloped with the needle reading exactly right.`,
+    `steer by the pack. the low pack tells you when to close the damper. the top pack tells you when to stop.`,
+  ],
+};
+
+// §4.5 — THE COUNTERFACTUAL'S LEVER. A near-miss you can act on is a lesson; a
+// near-miss you can only feel is a slot machine. Most of these outcomes are
+// genuinely refirable in real ceramics, so the offer is real: put it back in the
+// next load and try the adjustment the card just named.
+export const REFIRE = {
+  // what can go back in. a cracked pot cannot be un-cracked — that one is finished.
+  reasons: {
+    underfired: 'came out short of cone 10. more heat work would still take.',
+    dull:       'never reduced. the colour is in there, it just was not asked for.',
+    dry:        'no soak — the surface never had time to melt properly.',
+  },
+  maxCarried: 3,     // you cannot bank a whole shelf of second chances
+};

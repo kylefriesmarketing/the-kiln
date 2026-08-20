@@ -50,6 +50,31 @@ The studio remembers, too. A member whose work keeps coming out badly stops leav
 it for you, and the only way you find out is that the damp room is emptier. There is
 no reputation bar and nobody ever says *"that was not very kind."*
 
+## The notebook — M2, and how you actually learn this
+
+There is no tutorial for the instruments. While the kiln runs you **log what you
+believe it is doing** — the flame, the climb, the cone pack — and the game says
+nothing back. No tick, no colour, no sound. Be right **three times in a row** and
+that instrument settles: its page fills in permanently, in your own recorded
+observations, and it is where the game finally admits why the pyrometer lies.
+One wrong reading resets the run, so guessing costs more than learning to read it.
+
+> That is Obra Dinn's confirm-in-threes. It teaches the instruments with no manual,
+> makes confirmation a reward instead of a probe, forbids brute force, and produces
+> the codex, the progression and the fairness record as a side effect.
+> ⚠️ **Never surface whether a single reading was right.** `logReading()` deliberately
+> does not return it, so the UI cannot leak it even by accident.
+
+**Press n** for the notebook — instruments, the sixteen effects you have actually
+seen, and every firing you have run.
+
+### The lever
+The verdict names your margin; the refire is the offer attached to it. Pots that came
+out underfired, unreduced or dry can go **back in the next load** (a cracked one
+cannot — you cannot un-dunt a pot). They carry their history, so a pot that took on
+the third go says so in its provenance. Three at most, and they take up shelves that
+new work wanted: a second chance costs production, like everything else here.
+
 ## Files
 | | |
 |---|---|
@@ -76,6 +101,7 @@ the title screen.
 ```
 node tests/soak.mjs 24      # determinism, the one-way door, kiln geography, distributions
 node tests/verdict.mjs      # the brief, the margin, the tin — asserts the actual sentences
+node tests/notebook.mjs     # confirm-in-threes, the silence, and the refire lever
 node tests/census.mjs       # event frequency. a DISTRIBUTION to read, not a pass/fail
 node tests/calibrate.mjs    # re-derives the thermodynamic constants and cone thresholds
 node tests/smoke.mjs        # drives the real UI in a browser (needs playwright)

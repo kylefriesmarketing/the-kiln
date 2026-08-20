@@ -64,6 +64,36 @@ h1,h2,h3{font-weight:500;margin:0;letter-spacing:.06em}
 .slot .pn{font-size:10px;color:var(--dim2);letter-spacing:.07em;text-transform:uppercase}
 .slot .it{margin-top:8px;color:var(--paper);font-size:12.5px;line-height:1.35}
 .slot .ig{color:var(--fire);font-size:11px}
+/* THE NOTEBOOK (M2) — logging a reading, and the book itself. §10 */
+.readbox{border:1px solid var(--line);background:var(--ink2);padding:11px 13px;margin-top:10px}
+.readbox .rh{display:flex;align-items:center;gap:10px}
+.readbox .rq{color:var(--dim);font-size:11.5px;flex:1}
+.readbox .rows{margin-top:10px;display:none}
+.readbox.open .rows{display:block}
+.rinst{border-top:1px solid var(--line);padding:9px 0 3px}
+.rinst:first-child{border-top:0}
+.rinst .rn{color:var(--fire);font-size:11px;letter-spacing:.05em}
+.rinst .rk{color:var(--dim2);font-size:10.5px;margin-bottom:6px}
+.rinst .ro{display:flex;flex-wrap:wrap;gap:6px}
+.rinst .ro button{font-size:11.5px;padding:4px 9px}
+.rinst.done{opacity:.42}
+.rinst.done .ro{display:none}
+.rinst .settled{color:var(--good);font-size:11px;font-style:italic}
+.nbpage{margin-bottom:20px;padding-bottom:17px;border-bottom:1px solid var(--line)}
+.nbpage:last-of-type{border-bottom:0}
+.nbpage h3{margin:0 0 3px;font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--fire);font-weight:400}
+.nbpage .nbat{color:var(--dim2);font-size:10.5px;margin-bottom:9px}
+.nbpage p{margin:0 0 9px;color:var(--pale);font-size:13.5px;line-height:1.7}
+.nbpage p:last-child{margin-bottom:0}
+.nbpage.locked p{color:var(--dim2);font-style:italic}
+.nbchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.nbchip{border:1px solid var(--line2);padding:3px 9px;font-size:11px;color:var(--dim)}
+.nbchip.on{border-color:var(--fire);color:var(--hot)}
+.refire{border:1px solid var(--line2);padding:9px 11px;margin-bottom:8px;cursor:pointer;transition:.12s}
+.refire:hover{border-color:var(--pale)}
+.refire.on{border-color:var(--fire);background:#241a12}
+.refire .rfn{color:var(--paper);font-size:12.5px}
+.refire .rfw{color:var(--dim);font-size:11px;margin-top:3px}
 /* TEACHING (M1.1) — Ruthie's aside, and the consultable primer. §10 */
 .guide{border:1px solid var(--fire);border-left-width:3px;background:#1b1410;padding:14px 16px;margin:14px 0;display:none}
 .guide.on{display:block}
@@ -181,6 +211,7 @@ canvas.cones{width:100%;height:150px;border:1px solid var(--line);background:#0f
     <div style="display:flex;gap:12px">
       <button class="prime lc" id="b-new">light the kiln</button>
       <button class="lc" id="b-shelf0">the shelf</button>
+      <button class="lc" id="b-notebook">the notebook</button>
       <button class="lc" id="b-primer">how a firing goes</button>
     </div>
     <div class="cred lc" style="margin-top:14px;opacity:.75">first time? read that middle one. press <b>?</b> for it at any point.</div>
@@ -241,6 +272,13 @@ canvas.cones{width:100%;height:150px;border:1px solid var(--line);background:#0f
           <div class="w2 lc" id="winwant"></div>
           <div class="bar"><i id="winbar" style="width:0"></i></div>
         </div>
+        <div class="readbox" id="readbox">
+          <div class="rh">
+            <span class="rq lc" id="readq">write down what you think it is doing. nothing will tell you if you are right.</span>
+            <button class="lc" id="b-read" style="font-size:11.5px;padding:4px 10px">log a reading</button>
+          </div>
+          <div class="rows" id="readrows"></div>
+        </div>
         <div class="logbox" id="log"></div>
       </div>
       <div class="ctrls" id="ctrls"></div>
@@ -249,6 +287,7 @@ canvas.cones{width:100%;height:150px;border:1px solid var(--line);background:#0f
       <div class="speed" id="speed"></div>
       <span class="lc" id="firehint" style="color:var(--dim2);font-size:12px;margin-left:14px"></span>
       <span class="sp"></span>
+      <button class="lc" id="b-nb2" style="font-size:12px;padding:5px 11px">notebook (n)</button>
       <button class="lc" id="b-shutdown">shut it down</button>
     </div>
   </section>
@@ -304,6 +343,12 @@ canvas.cones{width:100%;height:150px;border:1px solid var(--line);background:#0f
   </section>
 
 </div>
+<div class="ovl" id="notebook"><div class="sheet">
+  <h2 class="lc">the notebook</h2>
+  <div class="psub lc" id="nbsub"></div>
+  <div id="nbbody"></div>
+  <div class="foot" style="margin-top:8px"><span class="sp"></span><button class="prime lc" id="b-nbclose">close</button></div>
+</div></div>
 <div class="ovl" id="primer"><div class="sheet">
   <h2 class="lc">how a firing goes</h2>
   <div class="psub lc">the whole of it, on one page. press ? at any time.</div>

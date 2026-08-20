@@ -2,8 +2,11 @@
 // The sim is in sim.js and knows nothing about the DOM. This file is the only
 // place that touches document, and the only place Math.random is allowed.
 import * as THREE from 'three';
-import { FIRE, FORMS, GLAZES, POSITIONS, EVENT_NAMES, ZONE_NAMES, ECON, MOOD, CLIENTS, GUIDE, PRIMER } from './data.js';
+import { FIRE, FORMS, GLAZES, POSITIONS, EVENT_NAMES, ZONE_NAMES, ECON, MOOD, CLIENTS, GUIDE, PRIMER,
+         INSTRUMENTS, REFIRE } from './data.js';
 import { judge, counterfactuals, settle, offerCommissions } from './verdict.js';
+import { logReading, truthOf, ensure as nbEnsure, isConfirmed, pagesFor,
+         confirmedCount, totalInstruments, refirable } from './notebook.js';
 import { newFiring, step, setControl, harvest, openKiln, coneDown, CONE_ORDER, hhmm, lcg } from './sim.js';
 import { makePot, nameOf } from './pot.js';
 import * as A from './audio.js';
@@ -18,7 +21,7 @@ const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const KEY='kiln-save';
 const DEFAULTS={ started:true, firings:0, pots:[], broken:0, effects:{}, notebook:{},
                  members:{}, kiln:{scars:0}, settings:{mute:false},
-                 money:ECON.startMoney, comDone:{}, ledger:[], taught:{} };
+                 money:ECON.startMoney, comDone:{}, ledger:[], taught:{}, carry:[] };
 // ⚠️ BUG FIXED (M1): an EMPTY object default ({} — effects, notebook, members, comDone)
 // recursed into mergeDefaults(saved, {}), whose loop over Object.keys({}) does nothing,
 // so it returned {} and silently WIPED the saved value on every reload. "17/16 effects
@@ -73,6 +76,47 @@ function teach(key, force){
   b.onclick=()=>{ A.click(); SAVE.taught[key]=1; save(); host.classList.remove('on'); };
   host.appendChild(b); host.classList.add('on');
 }
+// ---------------------------------------------------------------------------
+// THE NOTEBOOK ITSELF. §10 — the codex, the progression and the fairness artefact,
+// all as a side effect of the player's own recorded observations.
+// ⚠️ a locked page shows how many times you have LOGGED it and nothing else. Showing
+// how close you are would leak correctness one reading at a time and kill the rule.
+// ---------------------------------------------------------------------------
+function showNotebook(){
+  SAVE.notebook=nbEnsure(SAVE.notebook);
+  const B=$('#nbbody'); B.innerHTML='';
+  $('#nbsub').textContent=`${confirmedCount(SAVE.notebook)} of ${totalInstruments()} instruments settled · ${Object.keys(SAVE.effects).length} of 16 effects seen · ${SAVE.firings} firings`;
+  for(const [key,inst] of Object.entries(INSTRUMENTS)){
+    const done=isConfirmed(SAVE.notebook,key);
+    const st=SAVE.notebook.inst[key];
+    const d=el('div','nbpage'+(done?'':' locked'));
+    d.innerHTML=`<h3 class="lc">${inst.name}</h3><div class="nbat lc">${inst.at}${done?` · settled on firing ${st.at}`:''}</div>`;
+    if(done) for(const line of pagesFor(key)) d.appendChild(el('p','lc',line));
+    else d.appendChild(el('p','lc', st.logged
+      ? `you have written down ${st.logged} ${st.logged===1?'reading':'readings'} here and not yet settled it. three right in a row and the page fills.`
+      : `nothing written here yet. log what you think it is doing while the kiln is running.`));
+    B.appendChild(d);
+  }
+  // what the fire has actually shown you
+  const fx=el('div','nbpage');
+  fx.innerHTML='<h3 class="lc">what you have seen</h3><div class="nbat lc">the sixteen things a surface can do</div>';
+  const chips=el('div','nbchips');
+  for(const [k,label] of Object.entries(EVENT_NAMES)){
+    const seen=SAVE.effects[k]; const c=el('div','nbchip'+(seen?' on':''), seen?`${label} ×${seen}`:'— — —');
+    if(seen) c.title=k; chips.appendChild(c);
+  }
+  fx.appendChild(chips); B.appendChild(fx);
+  // the record
+  const rec=el('div','nbpage');
+  rec.innerHTML='<h3 class="lc">the record</h3><div class="nbat lc">every firing, and what it cost</div>';
+  if(!SAVE.ledger.length) rec.appendChild(el('p','lc','nothing fired yet.'));
+  for(const L of [...SAVE.ledger].reverse().slice(0,10))
+    rec.appendChild(el('p','lc',`firing ${L.firing} — ${L.com?(L.met?'brief met':'brief missed'):'no commission'} · ${L.net<0?'−$':'+$'}${Math.abs(L.net)}`));
+  B.appendChild(rec);
+  $('#notebook').classList.add('on');
+}
+function hideNotebook(){ $('#notebook').classList.remove('on'); }
+
 function showPrimer(){
   const B=$('#primerbody'); B.innerHTML='';
   for(const p of PRIMER){ const d=el('div','pg');
@@ -132,6 +176,12 @@ function drawBoard(){
 
 function buildDampRoom(rng){
   const out=[]; let n=0;
+  // §4.5 — what you carried out of the last firing to try again. it keeps its
+  // history, so a pot that took on the third go says so.
+  for(const c of (SAVE.carry||[])){
+    out.push({ id:'r'+(n++), form:c.form, glaze:c.glaze, owner:'you', mine:true,
+               refires:c.refires||1, thick:0 });
+  }
   // three of yours, unglazed — you choose
   for(let i=0;i<3;i++){
     const forms=Object.keys(FORMS);
@@ -227,7 +277,44 @@ function beginFire(){
   A.burnersOn();
   // ⚠️ this is the note that matters most — control lag and the one-way door are the
   // two things a first-timer cannot possibly infer, and both are unforgiving.
+  buildReadRows(); $('#readbox').classList.remove('open');
   show('scr-fire'); teach('fire'); loop();
+}
+
+// ---------------------------------------------------------------------------
+// LOGGING A READING (§10). You write down what you believe. The game says
+// NOTHING — not a tick, not a colour, not a sound — until three correct in a row
+// open the instrument's page for good. Silence is the mechanism, not an oversight.
+// ---------------------------------------------------------------------------
+function buildReadRows(){
+  const R=$('#readrows'); R.innerHTML='';
+  for(const [key,inst] of Object.entries(INSTRUMENTS)){
+    const done=isConfirmed(SAVE.notebook,key);
+    const d=el('div','rinst'+(done?' done':''));
+    d.innerHTML=`<div class="rn lc">${inst.name}</div><div class="rk lc">${done?inst.at:inst.ask}</div>`;
+    if(done){ d.appendChild(el('div','settled lc','settled — it is in the notebook')); }
+    else {
+      const row=el('div','ro');
+      for(const o of inst.opts){
+        const b=el('button','lc',o.label); b.title=o.hint;
+        b.onclick=()=>{
+          A.click();
+          const r=logReading(SAVE.notebook,key,o.k,G.S,SAVE.firings+1);
+          SAVE.notebook=r.state; save();
+          // ⚠️ the ONLY thing the player may be told is that it was written down.
+          // Never surface r.remaining here — that leaks correctness one bit at a time.
+          if(r.justConfirmed){
+            A.chime(true);
+            toast(`${inst.name} — you have it. it is in the notebook now.`);
+            buildReadRows();
+          } else toast('written down.');
+        };
+        row.appendChild(b);
+      }
+      d.appendChild(row);
+    }
+    R.appendChild(d);
+  }
 }
 
 function buildCtrls(){
@@ -378,7 +465,10 @@ function drawCones(){
     // the shelf they sit on
     x.strokeStyle='#2b2724'; x.lineWidth=3;
     x.beginPath(); x.moveTo(x0-8,base+2); x.lineTo(x0+colW*4-14,base+2); x.stroke();
-    x.fillStyle='#3f3ا'.slice(0,7); x.font='18px ui-monospace,monospace';
+    // ⚠️ this was '#3f3ا'.slice(0,7) — a stray Arabic character made it an INVALID
+    // colour, canvas silently keeps the previous fillStyle (the background), and both
+    // pack labels have been painted invisible since the render gate.
+    x.fillStyle='#8d8377'; x.font='18px ui-monospace,monospace';
     x.fillText(pk.t, x0-6, 26);
     pk.cs.forEach((cn,i)=>{
       const th=FIRE.cones[cn], pct=clamp(S.hw/th,0,1.5);
@@ -537,6 +627,7 @@ function provenance(p,pot){
   bits.push(c?`cone ${c} down.`:'no cones down.');
   if(soak&&soak.pct<0.55) bits.push('no soak to speak of.');
   bits.push(`${POSITIONS[p.pos].name} shelf.`);
+  if(p.refires) bits.push(p.refires===1?'refired once.':`refired ${p.refires} times.`);
   if(S.opened&&S.openTemp>FIRE.cool.targetOpenF) bits.push(`opened hot, at ${Math.round(S.openTemp)}°.`);
   return bits.join(' ');
 }
@@ -566,6 +657,7 @@ function drawVerdict(){
   SAVE.money+=bill.net;
   if(V&&V.passed) SAVE.comDone[com.id]=1;
   SAVE.ledger.push({ firing:SAVE.firings, net:bill.net, com:com?com.id:null, met:!!(V&&V.passed) });
+  SAVE.notebook=nbEnsure(SAVE.notebook);
   applyMoods();
 
   $('#vsub').textContent=`firing ${SAVE.firings} · ${G.fired.length} pieces out`;
@@ -612,6 +704,29 @@ function drawVerdict(){
   row(`clay · ${mine} of your own`, '−'+money(bill.clay));
   row('the night', (bill.net<0?'':'+')+money(bill.net), 'tot'+(bill.net<0?' neg':''));
   row('in the tin', money(SAVE.money), SAVE.money<0?'neg':'');
+
+  // --- §4.5's LEVER. the counterfactual above named the margin; this is the offer.
+  // a near-miss you can act on is a lesson. one you can only feel is a taunt. ---
+  const RF=$('#v-cf');
+  const back=refirable(G.fired,G.S);
+  SAVE.carry=[];
+  if(back.length){
+    const h=el('div','nbpage'); h.style.borderBottom='0'; h.style.marginTop='6px'; h.style.paddingBottom='0';
+    h.innerHTML='<h3 class="lc">put it back in</h3><div class="nbat lc">these are not finished. fire them again and try the adjustment.</div>';
+    RF.appendChild(h);
+    for(const pot of back.slice(0,6)){
+      const d=el('div','refire');
+      d.innerHTML=`<div class="rfn lc">${pot.name.split(' · ').slice(0,2).join(' · ')}</div>
+        <div class="rfw lc">${REFIRE.reasons[pot.why]}</div>`;
+      d.onclick=()=>{ A.click();
+        const i=SAVE.carry.findIndex(c=>c.name===pot.name);
+        if(i>=0) SAVE.carry.splice(i,1);
+        else { if(SAVE.carry.length>=REFIRE.maxCarried){ toast(`you can carry ${REFIRE.maxCarried} into the next firing, no more.`); return; }
+               SAVE.carry.push({ form:pot.form, glaze:pot.glaze, why:pot.why, refires:(pot.refires||0)+1, name:pot.name }); }
+        d.classList.toggle('on', SAVE.carry.some(c=>c.name===pot.name)); save(); };
+      RF.appendChild(d);
+    }
+  }
 
   // --- the studio. no bar, no number, just who said what. ---
   const T=$('#v-studio'); T.innerHTML='<h3>the studio</h3>';
@@ -705,10 +820,16 @@ $('#b-next').onclick=()=>{ A.click(); nextPot(); };
 $('#b-toshelf').onclick=()=>{ A.click(); drawShelf(); show('scr-shelf'); };
 $('#b-again').onclick=()=>{ cancelAnimationFrame(G.raf); startFiring(); };
 setInterval(()=>{ if($('#scr-cool').classList.contains('on')){ for(let i=0;i<3;i++) step(G.S,3); paintCool(); } },80);
+$('#b-read').onclick=()=>{ A.click(); $('#readbox').classList.toggle('open'); };
+$('#b-nbclose').onclick=()=>{ A.click(); hideNotebook(); };
+$('#b-notebook').onclick=()=>{ A.click(); showNotebook(); };
+$('#b-nb2').onclick=()=>{ A.click(); showNotebook(); };
 $('#b-primer').onclick=()=>{ A.click(); showPrimer(); };
 $('#b-primerclose').onclick=()=>{ A.click(); hidePrimer(); };
 addEventListener('keydown',e=>{
   if(e.key==='?'||e.key==='/'){ $('#primer').classList.contains('on')?hidePrimer():showPrimer(); return; }
+  if(e.key==='n'||e.key==='N'){ $('#notebook').classList.contains('on')?hideNotebook():showNotebook(); return; }
+  if(e.key==='Escape'&&$('#notebook').classList.contains('on')){ hideNotebook(); return; }
   if(e.key==='Escape'&&$('#primer').classList.contains('on')){ hidePrimer(); return; }
 });
 addEventListener('keydown',e=>{ if(e.key==='m'){ SAVE.settings.mute=!SAVE.settings.mute; A.setMute(SAVE.settings.mute); save(); toast(SAVE.settings.mute?'muted':'sound on'); }});
@@ -720,6 +841,7 @@ window.__kiln={ G, SAVE, sim:{newFiring,step,setControl,harvest,coneDown}, makeP
   // teaching hooks — rAF is suspended in a hidden pane, so toCool()/loop() never run
   // under headless verification. These let a test reach the notes directly.
   teach, showPrimer, hidePrimer, retaught(){ SAVE.taught={}; save(); },
+  notebook:{ showNotebook, logReading, truthOf, refirable, buildReadRows },
   wipe(){ localStorage.removeItem(KEY); location.reload(); },
   skip(){ while(G.S.phase==='firing') step(G.S); } };
 console.log('[the kiln] ready · window.__kiln');
