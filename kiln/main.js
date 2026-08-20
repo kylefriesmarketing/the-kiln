@@ -3,11 +3,14 @@
 // place that touches document, and the only place Math.random is allowed.
 import * as THREE from 'three';
 import { FIRE, FORMS, GLAZES, POSITIONS, EVENT_NAMES, ZONE_NAMES, ECON, MOOD, CLIENTS, GUIDE, PRIMER,
-         INSTRUMENTS, REFIRE, GLOW, COOLING, OPENING, WEAR, CERTAINTY, KILN_GODS } from './data.js';
+         INSTRUMENTS, REFIRE, GLOW, COOLING, OPENING, WEAR, CERTAINTY, KILN_GODS,
+         FEN as FEN_DATA } from './data.js';
 import { judge, counterfactuals, settle, offerCommissions } from './verdict.js';
 import { ensureKiln, shelfMods, drawShift, canTake, wearFrom, repairShelf,
          describeShelf, kilnSummary, drawTrial } from './kiln.js';
 import { rareOf, rareById, allRares, luckBias, ensureLuck, scoreNight, tickLuck } from './rare.js';
+import { arcState, arcLine, memberSlots, pendingLesson, teach as teachFen, fenReady,
+         fenPolicy, fenOutcome, ensureFen } from './arc.js';
 import { logReading, truthOf, ensure as nbEnsure, isConfirmed, pagesFor,
          confirmedCount, totalInstruments, refirable } from './notebook.js';
 import { newFiring, step, setControl, harvest, openKiln, coneDown, CONE_ORDER, hhmm, lcg } from './sim.js';
@@ -25,7 +28,7 @@ const KEY='kiln-save';
 const DEFAULTS={ started:true, firings:0, pots:[], broken:0, effects:{}, notebook:{},
                  members:{}, kiln:{scars:0}, settings:{mute:false},
                  money:ECON.startMoney, comDone:{}, ledger:[], taught:{}, carry:[],
-                 rares:{}, luck:{dry:0,rich:0}, god:null, gods:[] };
+                 rares:{}, luck:{dry:0,rich:0}, god:null, gods:[], fen:{here:false,taught:{},fired:false,met:false} };
 // ⚠️ BUG FIXED (M1): an EMPTY object default ({} — effects, notebook, members, comDone)
 // recursed into mergeDefaults(saved, {}), whose loop over Object.keys({}) does nothing,
 // so it returned {} and silently WIPED the saved value on every reload. "17/16 effects
@@ -177,6 +180,7 @@ function startFiring(){
     d.appendChild(el('div','d lc',eff)); C.appendChild(d);
   }
   const sum=G.S.cond.kiln[2]+G.S.cond.draw[2]+G.S.cond.fuel[2]+drawShift(SAVE.kiln);
+  drawArc();
   drawKilnState();
   drawGodBox();
   drawBoard();
@@ -223,6 +227,45 @@ function drawGodBox(){
 }
 
 const fmtPct = v => v===0 ? 'neutral' : (v>0?'+':'') + (v*100).toFixed(0) + '%';
+
+// ---------------------------------------------------------------------------
+// §13 — THE ARC. Where you are in this, said plainly, plus whatever Fen wants to
+// know tonight. ⚠️ You can only be asked about an instrument you SETTLED in your
+// own notebook (§10) — that join is the whole point, and it is why teaching
+// arrives as a consequence of learning rather than as a timer.
+// ⚠️ §13: "There is no victory." Nothing here counts down to an ending.
+// ---------------------------------------------------------------------------
+function drawArc(){
+  const A2=$('#arcline'); if(!A2) return;
+  SAVE.fen=ensureFen(SAVE.fen);
+  const a=arcLine(SAVE);
+  A2.innerHTML='';
+  A2.appendChild(el('div','ah lc',a.head));
+  A2.appendChild(el('div','al lc',a.line));
+
+  // Fen's question, if there is one tonight
+  const old=$('#lesson'); if(old) old.remove();
+  const q=pendingLesson(SAVE);
+  if(!q) return;
+  const L=el('div','lesson'); L.id='lesson';
+  L.appendChild(el('div','lw',FEN_NAME+' asks'));
+  L.appendChild(el('div','lq lc',q.ask));
+  const row=el('div','lo');
+  for(const o of q.opts){
+    const b=el('button','lc','“'+o.say+'”');
+    b.onclick=()=>{
+      A.click();
+      const r=teachFen(SAVE,q.key,o.k);
+      SAVE.fen=r.fen; save();
+      L.querySelector('.lo').remove();
+      L.appendChild(el('div','ln lc',r.note));
+    };
+    row.appendChild(b);
+  }
+  L.appendChild(row);
+  A2.after(L);
+}
+const FEN_NAME='fen';
 
 function drawKilnState(){
   const K=$('#kilnstate'); if(!K) return;
@@ -303,7 +346,9 @@ function buildDampRoom(rng){
   // the damp room is emptier. There is no reputation bar. Nobody says "that was not
   // very kind." Do not add a number to this.
   const willing=MEMBERS.filter(m=>(SAVE.members[m.id]?.mood||0) > -3);
-  const pool=[...willing].sort(()=>rng()-0.5).slice(0,6);
+  // §13 — early on the studio has barely left you anything. They start leaving
+  // work once you have shown you can be trusted with it.
+  const pool=[...willing].sort(()=>rng()-0.5).slice(0, memberSlots(SAVE));
   for(const m of pool){
     out.push({ id:'m'+(n++), form:m.makes[Math.floor(rng()*m.makes.length)],
                glaze: rng()<0.72 ? m.likes : YOURS[Math.floor(rng()*YOURS.length)],
@@ -1054,11 +1099,73 @@ function drawVerdict(){
     }
   }
 
+  // --- §13 — and if you have taught Fen everything you know, they ask for the
+  // next one. The firing they run is driven by fenPolicy(), which is built ENTIRELY
+  // from what you told them, so the result is honestly yours either way. ---
   // --- the studio. no bar, no number, just who said what. ---
   const T=$('#v-studio'); T.innerHTML='<h3>the studio</h3>';
   const lines=studioLines();
   if(!lines.length) T.innerHTML+='<div class="vsay lc">nobody said anything. they will have looked, though.</div>';
   for(const t of lines){ const d=el('div','vsay lc'); d.style.marginBottom='9px'; d.textContent=t; T.appendChild(d); }
+
+  // --- §13 — and if you have taught Fen everything you know, they ask for the next
+  // one. The firing they run is driven by fenPolicy(), built ENTIRELY from what you
+  // told them, so the result is honestly yours either way.
+  // ⚠️ this must come AFTER the studio block above sets innerHTML, or it is wiped.
+  if(fenReady(SAVE)){
+    const F2=el('div','lesson'); F2.id='fenbox'; F2.style.marginTop='14px';
+    F2.appendChild(el('div','lw','fen'));
+    F2.appendChild(el('div','lq lc',FEN_DATA.readyToFire));
+    const b=el('button','lc prime','stand at the back and let them');
+    b.style.marginTop='12px';
+    b.onclick=()=>{ A.click(); runFenFiring(F2); };
+    F2.appendChild(b);
+    T.appendChild(F2);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// §13 — Fen fires one, and you stand at the back. The policy comes ENTIRELY from
+// what you taught them (arc.js fenPolicy), driven through the same sim you use.
+// It is not a cutscene and it is not a roll: if they never reduce, it is because
+// you told them a short blue flame was a rich fire.
+// ⚠️ §13: "There is no victory." What comes back is a paragraph, not a score.
+// ---------------------------------------------------------------------------
+function runFenFiring(host){
+  const p=fenPolicy(SAVE);
+  const S=newFiring((G.seed ^ 0x5EED1E)>>>0, [],
+    { posMod:shelfMods(SAVE.kiln), flue:drawShift(SAVE.kiln), luck:0 });
+  let guard=0;
+  while(S.phase==='firing' && guard++<4000){
+    setControl(S,'gas', S.win.i<1 ? 2 : p.climbGas);
+    if(S.win.i<1) setControl(S,'damper',9);
+    else {
+      const err=p.reduceTarget - S.atm;
+      if(Math.abs(err)>0.06)
+        setControl(S,'damper', S.set.damper - Math.sign(err)*Math.max(1,Math.round(Math.abs(err)*5)));
+    }
+    // taught to read the cones, they stop when the WORK is done; taught to read the
+    // dial, they stop on temperature and underfire — exactly as you told them to.
+    const done = p.stopOnCones ? S.hw>=FIRE.cones['10'] : S.temp>=2280;
+    if(done){ setControl(S,'gas',0); setControl(S,'damper',0); if(S.eff.gas<0.6) S.phase='cooling'; }
+    step(S); if(S.t>1020) break;
+  }
+  S.phase='cooling'; setControl(S,'gas',0); setControl(S,'damper',0);
+  let c=0; while(S.temp>FIRE.cool.targetOpenF && c++<40000) step(S,3);
+  const out=fenOutcome(SAVE,S);
+  SAVE.fen.fired=true; save();
+
+  host.innerHTML='';
+  host.appendChild(el('div','lw','fen'));
+  host.appendChild(el('div','lq lc',out.line));
+  const cone=coneDown(S.hw);
+  host.appendChild(el('div','ln lc',
+    (cone?'they took it to cone '+cone+'. ':'they never got a cone down. ')
+    + (S.flags.missedReduction?'no reduction — the door shut on them at 06. ':'reduction begun and held. ')
+    + Object.values(p.knows).filter(Boolean).length+' of the 3 things you told them were right.'));
+  const cl=el('div','lq lc',out.close);
+  cl.style.cssText='margin-top:14px;color:var(--hot)';
+  host.appendChild(cl);
 }
 
 // §12.1 — the members remember. Mood is never displayed; it only changes what turns
@@ -1192,6 +1299,7 @@ window.__kiln={ G, SAVE, sim:{newFiring,step,setControl,harvest,coneDown}, makeP
   teach, showPrimer, hidePrimer, retaught(){ SAVE.taught={}; save(); },
   notebook:{ showNotebook, logReading, truthOf, refirable, buildReadRows },
   kilnwear:{ drawKilnState, wearFrom, shelfMods, drawShift, describeShelf, repairShelf },
+  arc:{ drawArc, arcState, pendingLesson, fenReady, fenPolicy, fenOutcome },
   reveal:{ toOpen, toUnload, crackDoor, glowOf },
   // the fire screen repaints from rAF only, which a hidden pane suspends — expose
   // the painter so a headless check can prove what the player would actually see.

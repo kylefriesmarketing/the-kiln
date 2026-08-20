@@ -689,3 +689,89 @@ export const KILN_GODS = [
   { id:'beast',   name:'something with too many legs', line:'nobody has asked what it is meant to be.' },
   { id:'ring',    name:'a ring with a thumbprint in it', line:'your thumb. that is the whole of it.' },
 ];
+
+// ---------------------------------------------------------------------------
+// THE ARC (M6). §13.
+// "Not acts. Three states, and you slide between them."
+//   FIRING FOR YOURSELF      — your work, mostly bad, and the kiln is a stranger
+//   FIRING FOR THE STUDIO    — nine people's work, and choices about whose goes where
+//   FIRING FOR SOMEONE ELSE TO LEARN — someone new wants to know how
+//
+// "THE ENDGAME OF A CRAFT IS TEACHING IT, and this is the only honest ending a
+// game about a kiln has."
+//
+// ⚠️ §13 also says: "There is no victory. There is a firing where everything you
+// intended happened, and it will not be the one you remember." Do not add a win
+// screen, a score, or a completion percentage to any of this.
+// ---------------------------------------------------------------------------
+export const ARC = {
+  // you fire for yourself until the studio decides you can be trusted with theirs
+  yourselfUntil: 3,        // firings
+  // and someone new turns up once you visibly know what you are doing
+  teachingAfter: 7,        // firings
+  teachingNeedsSettled: 2, // ...and at least this many instruments settled (§10)
+  membersEarly: 2,         // how many people leave work in the damp room, early on
+  membersMid: 6,
+};
+
+// ⚠️ You can only be ASKED about an instrument you have SETTLED in your own
+// notebook (§10). That is the whole join between the two systems: three correct
+// readings in a row earned you the page, and the page is what you have to give.
+// And what you tell them is what they believe — including if you tell them wrong.
+export const LESSONS = {
+  flame: {
+    ask: 'how do you know when it is actually reducing? i keep looking and it just looks like fire.',
+    opts: [
+      { k:'red',     say:'long, soft, licking orange out of the peep. if it is short and blue it is burning clean.', right:true },
+      { k:'ox',      say:'short and blue is what you want. that is a rich fire.',                                    right:false },
+      { k:'neutral', say:'you cannot really tell by looking. go by the dial.',                                        right:false },
+    ],
+    learnt: 'fen watches the spyhole now instead of the pyrometer. it took about ten minutes.',
+    wrong:  'fen believes you. fen will be looking for a short blue flame and calling it reduction.',
+  },
+  climb: {
+    ask: 'how fast is it meant to be going up? i do not want to be the one who cracks everything.',
+    opts: [
+      { k:'steady', say:'about a hundred and fifty an hour through the middle. faster than that and you will crack ware you will not see fail for hours.', right:true },
+      { k:'hard',   say:'as fast as it will go. the sooner it is up the sooner it is down.', right:false },
+      { k:'holding',say:'slow as you can bear. you cannot really overdo slow.',              right:false },
+    ],
+    learnt: 'fen has started throttling back on the climb without being told.',
+    wrong:  'fen is going to run it up hard, because you said so.',
+  },
+  cones: {
+    ask: 'why do you keep squinting at those little cones when there is a perfectly good number on the wall?',
+    opts: [
+      { k:'work', say:'because the cones measure the work the fire has done — heat and time together. the number only knows how hot it is right now.', right:true },
+      { k:'temp', say:'habit, mostly. the number is fine.',                                    right:false },
+      { k:'both', say:'the cones are for show. everyone has a cone pack.',                      right:false },
+    ],
+    learnt: 'fen has stopped asking what the pyrometer says.',
+    wrong:  'fen steers by the dial now. exactly the way you told them to.',
+  },
+};
+
+export const ARC_LINES = {
+  yourself: {
+    head: 'you are firing for yourself',
+    line: 'nobody has left much in the damp room yet. it is mostly your work in there, and the kiln is still a stranger to you.',
+  },
+  studio: {
+    head: 'you are firing for the studio',
+    line: 'nine people leave their work on that shelf and go home. what happens to it happens because of where you put it.',
+  },
+  teaching: {
+    head: 'somebody is watching you do it',
+    line: 'fen started three weeks ago and has not fired anything. they have taken to standing near the kiln at the part where nothing is happening.',
+  },
+};
+
+export const FEN = {
+  name: 'Fen',
+  arrives: 'there is somebody new in the studio. they have been here three weeks and have not fired anything, and tonight they asked if they could watch.',
+  readyToFire: 'fen has asked whether they can do the next one. you would be standing right there.',
+  afterGood: 'fen fired it. you stood at the back and did not touch anything, which was harder than firing it yourself.',
+  afterBad: 'fen fired it, and it went the way you taught them it would go. they are already working out what they would do differently.',
+  // ⚠️ §13: "There is no victory." This is a closing beat, not a win screen.
+  close: 'that is the job, then. somebody taught you and did not make a thing of it, and now you have done the same, and the kiln does not care either way. the light is still on.',
+};

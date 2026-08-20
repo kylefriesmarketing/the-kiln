@@ -172,6 +172,37 @@ Make one out of scrap clay before you load. It sits on the arch.
 > passed to the sim and never read by it — `tests/rare.mjs` asserts that no kiln god
 > carries a numeric field at all, so it *cannot* become a buff by accident.
 
+## The arc — M6, and the only honest ending
+
+§13: not acts, **three states you slide between.**
+
+1. **firing for yourself** — barely anyone leaves work in the damp room. It is mostly
+   your own, and the kiln is a stranger.
+2. **firing for the studio** — nine people's work, and choices about whose goes where.
+3. **firing for someone else to learn** — Fen started three weeks ago, has not fired
+   anything, and has taken to standing near the kiln at the part where nothing happens.
+
+**You can only teach what you settled in your own notebook.** That join is the whole
+design: three correct readings in a row (§10) earned you the page, and the page is the
+only thing you have to hand over. Settle nothing and nobody ever asks you anything —
+you stay in state 2 forever, however many firings you run.
+
+And **what you say is what they believe, including when you are wrong.** Tell Fen a
+short blue flame is a rich fire and they will spend the rest of their life looking for
+one. The game records it without correcting you and without scolding you.
+
+Then they ask for the next firing, and you stand at the back. Their firing is driven
+by `fenPolicy()` — built *entirely* from what you told them — and run through the same
+sim you use. Measured live: taught right, they take it to **cone 10 with reduction
+held**; taught wrong, they steer by the dial and **overfire to cone 11**. The result is
+honestly yours either way.
+
+> ⚠️ §13: **"There is no victory."** There is a firing where everything you intended
+> happened, and it will not be the one you remember. Nothing in `arc.js` returns a
+> score, a rank or a completion percentage — `tests/arc.mjs` asserts the word "win"
+> appears nowhere in the whole arc, and that the closing beat is a paragraph rather
+> than a trophy. **Do not add an ending screen.**
+
 ## Files
 | | |
 |---|---|
@@ -182,6 +213,7 @@ Make one out of scrap clay before you load. It sits on the arch.
 | `kiln/notebook.js` | confirm-in-threes, and which pots may go back in. DOM-free, no rng. |
 | `kiln/kiln.js` | the machine's own memory — wear, the draw trial. DOM-free, no rng. |
 | `kiln/rare.js` | the six landmarks, and the invisible floor. DOM-free, no rng. |
+| `kiln/arc.js` | the three states, and teaching Fen. DOM-free, no rng. |
 | `kiln/main.js` | phases, UI, save. The only file that touches the DOM. |
 | `kiln/audio.js` | WebAudio, zero sound files. |
 | `gate.html` | the render gate — 30 pots, one firing each, for the squint test. |
@@ -222,6 +254,7 @@ node tests/notebook.mjs     # confirm-in-threes, the silence, and the refire lev
 node tests/reveal.mjs       # colour temperature, and that the cooling gate is a real wait
 node tests/kiln.mjs         # wear is an INPUT not a die roll, and the warp rate is sane
 node tests/rare.mjs         # every landmark is REACHABLE, and none is lucky
+node tests/arc.mjs          # you can only teach what you settled, and there is no victory
 node tests/census.mjs       # event frequency. a DISTRIBUTION to read, not a pass/fail
 node tests/calibrate.mjs    # re-derives the thermodynamic constants and cone thresholds
 node tests/smoke.mjs        # drives the real UI in a browser (needs playwright)
