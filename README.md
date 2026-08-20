@@ -119,7 +119,7 @@ press anything. During the firing each demand window shows its position in the n
 say it: *"CLOSE THE DAMPER. starve the fire of air so it pulls oxygen out of the clay
 instead. this is the one you cannot do late."*
 
-> ⚠️ **The palette is measured, not eyeballed.** The original put  at **2.95:1**
+> ⚠️ **The palette is measured, not eyeballed.** The original put `--dim2` at **2.95:1**
 > against the background and used it 24 times, mostly at 10.5px — it failed WCAG for
 > body text and it was the most common text colour in the game; borders sat at 1.34:1,
 > so the structure read as a flat void. Every text colour now clears 4.5:1 on both
