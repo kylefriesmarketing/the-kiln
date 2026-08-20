@@ -3,8 +3,10 @@
 // place that touches document, and the only place Math.random is allowed.
 import * as THREE from 'three';
 import { FIRE, FORMS, GLAZES, POSITIONS, EVENT_NAMES, ZONE_NAMES, ECON, MOOD, CLIENTS, GUIDE, PRIMER,
-         INSTRUMENTS, REFIRE, GLOW, COOLING, OPENING } from './data.js';
+         INSTRUMENTS, REFIRE, GLOW, COOLING, OPENING, WEAR, CERTAINTY } from './data.js';
 import { judge, counterfactuals, settle, offerCommissions } from './verdict.js';
+import { ensureKiln, shelfMods, drawShift, canTake, wearFrom, repairShelf,
+         describeShelf, kilnSummary, drawTrial } from './kiln.js';
 import { logReading, truthOf, ensure as nbEnsure, isConfirmed, pagesFor,
          confirmedCount, totalInstruments, refirable } from './notebook.js';
 import { newFiring, step, setControl, harvest, openKiln, coneDown, CONE_ORDER, hhmm, lcg } from './sim.js';
@@ -139,7 +141,11 @@ function startFiring(){
   G.slots={}; G.sel=null; G.flag=null; G.cracked=false;
   $('#crackwrap').style.display='none';
   $('#b-crack').textContent='crack the door'; $('#b-crack').disabled=false;
-  G.S=newFiring(G.seed, []);
+  // §5.5 — this is not A kiln, it is YOUR kiln, and it remembers. The wear is an
+  // INPUT to the sim, so the firing stays deterministic (tests/kiln.mjs).
+  SAVE.kiln=ensureKiln(SAVE.kiln);
+  G.S=newFiring(G.seed, [], { posMod:shelfMods(SAVE.kiln), flue:drawShift(SAVE.kiln) });
+  G.trial=null;
   $('#firingno').textContent=`firing ${SAVE.firings+1}`;
   const C=$('#conds'); C.innerHTML='';
   const rows=[['the kiln',G.S.cond.kiln],['the flue',G.S.cond.draw],['the tank',G.S.cond.fuel]];
@@ -149,13 +155,65 @@ function startFiring(){
     const eff=c[2]===0?'no help, no harm':(c[2]>0?`it will run hot — ${(c[2]*100).toFixed(0)}%`:`it will fight you — ${(c[2]*100).toFixed(0)}%`);
     d.appendChild(el('div','d lc',eff)); C.appendChild(d);
   }
-  const sum=G.S.cond.kiln[2]+G.S.cond.draw[2]+G.S.cond.fuel[2];
+  const sum=G.S.cond.kiln[2]+G.S.cond.draw[2]+G.S.cond.fuel[2]+drawShift(SAVE.kiln);
+  drawKilnState();
   drawBoard();
   $('#moneyline').textContent = `${SAVE.money<0?'−$':'$'}${Math.abs(SAVE.money)} in the tin`;
   $('#condread').textContent = sum>0.15 ? "it'll want less gas than you think tonight."
     : sum<-0.15 ? "this is a slow night. start earlier than feels right, and don't chase it with the gas."
     : "an ordinary night. nothing is doing you any favours and nothing is against you.";
   show('scr-cond'); teach('cond'); teach('board');
+}
+
+// ---------------------------------------------------------------------------
+// §5.5 — what this kiln has BECOME, said out loud before you commit to anything.
+// A wear effect the player cannot read before the door is bricked up would be a
+// hidden variable, and §19.5 forbids those.
+// §6.4 — and the draw trial, the one way to turn "approximately" into "precisely".
+// It costs fuel and half an hour. Information costs production.
+// ---------------------------------------------------------------------------
+const fmtPct = v => v===0 ? 'neutral' : (v>0?'+':'') + (v*100).toFixed(0) + '%';
+
+function drawKilnState(){
+  const K=$('#kilnstate'); if(!K) return;
+  K.innerHTML='';
+  K.appendChild(el('div','k','the kiln itself'));
+  K.appendChild(el('div','ksum lc', kilnSummary(SAVE.kiln) || 'new brick, true shelves, nothing on it yet.'));
+  const worn=Object.keys(SAVE.kiln.shelves)
+    .map(pos=>({pos, txt:describeShelf(SAVE.kiln,pos)})).filter(x=>x.txt);
+  if(worn.length){
+    const list=el('div','kwear');
+    for(const w of worn){
+      const row=el('div','kw lc');
+      row.innerHTML='<b>'+POSITIONS[w.pos].name+'</b> — '+w.txt;
+      // a warped shelf can be replaced, for money. that is the whole economy (§12.3).
+      if(SAVE.kiln.shelves[w.pos].warp>=WEAR.warpBlocksTall){
+        const b=el('button','lc','replace it — $'+WEAR.shelfCost);
+        b.style.cssText='font-size:11px;padding:3px 9px;margin-left:9px';
+        b.onclick=()=>{ A.click(); SAVE.money-=WEAR.shelfCost;
+          SAVE.kiln=repairShelf(SAVE.kiln,w.pos); save();
+          $('#moneyline').textContent=(SAVE.money<0?'−$':'$')+Math.abs(SAVE.money)+' in the tin';
+          drawKilnState(); };
+        row.appendChild(b);
+      }
+      list.appendChild(row);
+    }
+    K.appendChild(list);
+  }
+  const t=el('div','ktrial');
+  if(G.trial){
+    t.appendChild(el('div','tl lc', G.trial.line));
+    t.appendChild(el('div','tn lc','the kiln '+fmtPct(G.trial.kiln)+' · the flue '+fmtPct(G.trial.draw)+' · the tank '+fmtPct(G.trial.fuel)));
+  } else {
+    const b=el('button','lc', CERTAINTY.trial.label+' — $'+CERTAINTY.trial.cost);
+    b.onclick=()=>{ A.click(); SAVE.money-=CERTAINTY.trial.cost; save();
+      G.trial=drawTrial(G.S, SAVE.kiln);
+      $('#moneyline').textContent=(SAVE.money<0?'−$':'$')+Math.abs(SAVE.money)+' in the tin';
+      drawKilnState(); };
+    t.appendChild(b);
+    t.appendChild(el('div','tn lc','ten minutes of burners on an empty kiln tells you exactly what tonight is, instead of roughly.'));
+  }
+  K.appendChild(t);
 }
 
 // The board. Deterministic per firing, so reloading cannot reroll an easier brief.
@@ -214,8 +272,8 @@ function drawLoad(){
   for(const p of G.damp){
     const placed=Object.values(G.slots).some(x=>x&&x.id===p.id);
     const who = p.mine?'yours':(MEMBERS.find(m=>m.id===p.owner)||{}).n;
-    const d=el('div','piece'+(placed?' placed':'')+(G.sel===p.id?' sel':''));
-    d.innerHTML=`<div class="n lc">${FORMS[p.form].name}${p.mine?" ▾":""}</div>
+    const d=el('div','piece'+(p.tile?' tile':'')+(placed?' placed':'')+(G.sel===p.id?' sel':''));
+    d.innerHTML=`<div class="n lc">${p.tile?'test tile':FORMS[p.form].name}${(p.mine&&!p.tile)?" ▾":""}</div>
       <div class="g lc">${GLAZES[p.glaze].name}${p.mine?' ▾':''}</div>
       <div class="o lc">${who}</div>`;
     d.onclick=e=>{ A.click();
@@ -233,10 +291,13 @@ function drawLoad(){
     const it=G.slots[key];
     const s=el('div','slot'+(it?' full':'')+(G.flag===key?' flag':''));
     s.innerHTML=`<div class="pn">${P.name}</div>`+
-      (it?`<div class="it lc">${FORMS[it.form].name}</div><div class="ig lc">${GLAZES[it.glaze].name}</div>`
-         :`<div class="hint lc">${shelfHint(P)}</div>`);
+      (it?`<div class="it lc${it.tile?' tile':''}">${it.tile?'test tile':FORMS[it.form].name}</div><div class="ig lc">${it.tile?'pull it later':GLAZES[it.glaze].name}</div>`
+         :`<div class="hint lc">${shelfHint(P,key)}</div>`);
     s.onclick=()=>{ A.click(0.5);
       if(G.sel){ const p=G.damp.find(x=>x.id===G.sel);
+        // §5.5 — a warped shelf will not sit a tall piece flat, and it says why
+        if(!canTake(SAVE.kiln, key, p.form)){
+          toast('the '+POSITIONS[key].name+' is warped. nothing that tall will sit flat on it.'); return; }
         for(const k of Object.keys(G.slots)) if(G.slots[k]&&G.slots[k].id===p.id) delete G.slots[k];
         G.slots[key]=p; G.sel=null; }
       else if(it){ G.flag = G.flag===key?null:key; }
@@ -248,7 +309,12 @@ function drawLoad(){
   $('#b-brick').disabled = n===0;
   $('#flagname').textContent = G.flag ? `${FORMS[G.slots[G.flag].form].name} on the ${POSITIONS[G.flag].name}` : 'click a placed piece to flag it. it comes out last.';
 }
-function shelfHint(P){
+// a shelf that has been WORKED says that first — its general character second
+function shelfHint(P, key){
+  const worn = key ? describeShelf(SAVE.kiln, key) : '';
+  return worn || shelfCharacter(P);
+}
+function shelfCharacter(P){
   if(P.heat>0.8) return 'hottest. heaviest reduction.';
   if(P.heat<-1.2) return 'cold and still. nothing likes it here.';
   if(P.heat<-0.8) return 'runs cool. crawls things.';
@@ -256,6 +322,40 @@ function shelfHint(P){
   if(P.ash>0.8) return 'fast air. it dries the surface.';
   if(P.heat===0) return 'even. honest. unspectacular.';
   return 'good atmosphere.';
+}
+
+// ---------------------------------------------------------------------------
+// §6.4 — TEST TILES. A tile occupies a shelf a pot could have had, and can be
+// pulled through the spyhole mid-firing with long tongs for ONE real,
+// unambiguous observation of what that shelf has actually been doing.
+// That is the trade the bible names: information costs production.
+// ---------------------------------------------------------------------------
+function addTile(){
+  const have=G.damp.filter(p=>p.tile).length;
+  if(have>=CERTAINTY.tile.max){ toast('three tiles is plenty. they are taking shelves off you.'); return; }
+  A.click(); SAVE.money-=CERTAINTY.tile.cost; save();
+  G.damp.push({ id:'tile'+have, tile:true, form:'teabowl', glaze:'clear', owner:'you', mine:false });
+  drawLoad();
+}
+
+// what the tile actually tells you: what THAT shelf has done, in plain words.
+function pullTile(){
+  const S=G.S;
+  const entry=Object.entries(G.slots).find(([,v])=>v&&v.tile&&!v.pulled);
+  if(!entry){ $('#b-pull').style.display='none'; return; }
+  const [pos,tile]=entry; tile.pulled=true;
+  const p=S.pos[pos]||S.pos.middle;
+  const cone=coneDown(p.hw);
+  const atm = S.atm>0.85?'over-reduced, and smoking' : S.atm>0.30?'properly reducing'
+            : S.atm>0.08?'about neutral' : 'burning clean — no reduction there at all';
+  A.doorCrack();
+  toast('tile out of the '+POSITIONS[pos].name+': '+(cone?'cone '+cone+' down':'no cone down yet')+', '+atm+'.');
+  // it goes in the log too, because §4.3 says nothing important should be transient
+  S.log.push({ t:Math.round(S.t), kind:'beat',
+    text:'pulled a tile from the '+POSITIONS[pos].name+' — '+(cone?'cone '+cone+' down':'no cone down')+', '+atm });
+  lastLog=Math.min(lastLog,S.log.length-1);
+  paintLog();
+  if(!Object.values(G.slots).some(v=>v&&v.tile&&!v.pulled)) $('#b-pull').style.display='none';
 }
 
 function autoStack(){
@@ -280,6 +380,7 @@ function beginFire(){
   // ⚠️ this is the note that matters most — control lag and the one-way door are the
   // two things a first-timer cannot possibly infer, and both are unforgiving.
   buildReadRows(); $('#readbox').classList.remove('open');
+  $('#b-pull').style.display = Object.values(G.slots).some(v=>v&&v.tile) ? '' : 'none';
   show('scr-fire'); teach('fire'); loop();
 }
 
@@ -622,7 +723,8 @@ function initThree(){
 // ---------------------------------------------------------------------------
 function toOpen(){
   openKiln(G.S);
-  const raw=harvest(G.S);
+  // a test tile is not a pot — it never reaches the unload (§6.4)
+  const raw=harvest(G.S).filter(r=>!r.tile);
   const order=Object.keys(POSITIONS);
   raw.sort((a,b)=>order.indexOf(a.pos)-order.indexOf(b.pos));
   if(G.flag){ const i=raw.findIndex(p=>p.pos===G.flag); if(i>=0) raw.push(raw.splice(i,1)[0]); }
@@ -798,6 +900,8 @@ function drawVerdict(){
   SAVE.ledger.push({ firing:SAVE.firings, net:bill.net, com:com?com.id:null, met:!!(V&&V.passed) });
   SAVE.notebook=nbEnsure(SAVE.notebook);
   applyMoods();
+  // §5.5 — and the kiln itself is a different kiln tomorrow because of tonight
+  SAVE.kiln = wearFrom(SAVE.kiln, G.fired, G.S);
 
   $('#vsub').textContent=`firing ${SAVE.firings} · ${G.fired.length} pieces out`;
 
@@ -961,6 +1065,8 @@ $('#b-new').onclick=()=>{ startFiring(); };
 $('#b-shelf0').onclick=()=>{ drawShelf(); show('scr-shelf'); };
 $('#b-toload').onclick=()=>{ drawLoad(); show('scr-load'); teach('load'); };
 $('#b-auto').onclick=autoStack;
+$('#b-tile').onclick=addTile;
+$('#b-pull').onclick=()=>{ A.click(); pullTile(); };
 $('#b-brick').onclick=()=>{ A.damper(); beginFire(); };
 $('#b-shutdown').onclick=()=>{ setControl(G.S,'gas',0); setControl(G.S,'damper',0);
   G.S.phase='cooling'; A.burnersOff(); toast('burners off. now it cools.'); };
@@ -1002,6 +1108,7 @@ window.__kiln={ G, SAVE, sim:{newFiring,step,setControl,harvest,coneDown}, makeP
   // under headless verification. These let a test reach the notes directly.
   teach, showPrimer, hidePrimer, retaught(){ SAVE.taught={}; save(); },
   notebook:{ showNotebook, logReading, truthOf, refirable, buildReadRows },
+  kilnwear:{ drawKilnState, wearFrom, shelfMods, drawShift, describeShelf, repairShelf },
   reveal:{ toOpen, toUnload, crackDoor, glowOf },
   // the fire screen repaints from rAF only, which a hidden pane suspends — expose
   // the painter so a headless check can prove what the player would actually see.

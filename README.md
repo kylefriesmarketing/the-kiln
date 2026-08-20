@@ -98,6 +98,35 @@ new work wanted: a second chance costs production, like everything else here.
 > sim-minutes per 80ms tick meant a full cool elapsed in *eight seconds*), and
 > `tests/reveal.mjs` now fails if it ever collapses again.
 
+## The kiln remembers — M4
+
+It stops being *a* kiln and becomes **yours**. Across the whole save it accumulates:
+
+- **glaze** where a run got away — glazed brick throws heat back, so a shelf you have
+  run glaze onto is permanently *hotter* than it used to be
+- **warp** from genuine overfiring — a warped shelf will not sit a tall piece flat and
+  refuses bottles, vases and jars until you pay to replace it
+- **a sooty flue** for a firing or two after a hard reduction, which changes the draw
+
+All of it is stated on the conditions screen *before* you commit, because a wear
+effect you cannot read before bricking up the door is a hidden variable and §19.5
+forbids those. And all of it is a **sim input, never a die roll** — same kiln + same
+seed is the same firing, byte for byte (`tests/kiln.mjs` asserts it).
+
+> ⚠️ The warp threshold is **measured**. At the first value (0.94 × cone 10) *71% of
+> shelves* crossed it in any decent firing — every shelf warped every night and within
+> three firings the kiln refused all tall work. At 1.35 × cone 11 it is 11% per firing,
+> so a shelf goes out of true roughly every nine firings and needs three of those
+> before it stops taking tall pieces. The test pins that rate.
+
+### Buying certainty (§6.4)
+- **The draw trial** — ten minutes of burners on an empty kiln before you load. It costs
+  fuel and half an hour and tells you tonight *precisely* instead of roughly: the exact
+  condition numbers and a real predicted climb rate at gas 8.
+- **Test tiles** — a tile takes a shelf a pot could have had, and can be **pulled through
+  the spyhole mid-firing** for one unambiguous reading of what that shelf has actually
+  been doing. That is the trade the bible names: information costs production.
+
 ## Files
 | | |
 |---|---|
@@ -106,6 +135,7 @@ new work wanted: a second chance costs production, like everything else here.
 | `kiln/pot.js` | the pot generator. One scalar thickness field drives the whole surface. |
 | `kiln/verdict.js` | the brief, the margin, the tin. DOM-free, no rng, never scores an object. |
 | `kiln/notebook.js` | confirm-in-threes, and which pots may go back in. DOM-free, no rng. |
+| `kiln/kiln.js` | the machine's own memory — wear, the draw trial. DOM-free, no rng. |
 | `kiln/main.js` | phases, UI, save. The only file that touches the DOM. |
 | `kiln/audio.js` | WebAudio, zero sound files. |
 | `gate.html` | the render gate — 30 pots, one firing each, for the squint test. |
@@ -144,6 +174,7 @@ node tests/soak.mjs 24      # determinism, the one-way door, kiln geography, dis
 node tests/verdict.mjs      # the brief, the margin, the tin — asserts the actual sentences
 node tests/notebook.mjs     # confirm-in-threes, the silence, and the refire lever
 node tests/reveal.mjs       # colour temperature, and that the cooling gate is a real wait
+node tests/kiln.mjs         # wear is an INPUT not a die roll, and the warp rate is sane
 node tests/census.mjs       # event frequency. a DISTRIBUTION to read, not a pass/fail
 node tests/calibrate.mjs    # re-derives the thermodynamic constants and cone thresholds
 node tests/smoke.mjs        # drives the real UI in a browser (needs playwright)

@@ -19,7 +19,9 @@ export function coneDown(hw){
 }
 export function conePct(hw, cone){ return hw / FIRE.cones[cone]; }
 
-export function newFiring(seed, load=[]){
+// ⚠️ posMod/flue come from the KILN ITSELF (kiln.js, §5.5) and are INPUTS, not
+// randomness. Same kiln state + same seed = the same firing, byte for byte.
+export function newFiring(seed, load=[], wear=null){
   const rng=lcg(seed);
   const pick=a=>a[Math.floor(rng()*a.length)];
   // ⚠️ §4.2 — THE DICE GO IN FRONT OF THE DOOR. These are rolled and SHOWN before
@@ -35,6 +37,7 @@ export function newFiring(seed, load=[]){
     win:{ i:0, openAt:null, cur:null, score:{} },
     flags:{ reductionStarted:false, redRun:0, missedReduction:false, blowouts:false, stalled:0, blackSmoke:0 },
     pos:{}, opened:false, openTemp:null,
+    posMod:(wear&&wear.posMod)||{}, flueWear:(wear&&wear.flue)||0,
   };
   for(const k of Object.keys(POSITIONS)) S.pos[k]={ hw:0, red:0, peak:0, coolRate:0 };
   logit(S,'cond',`${cond.kiln[1]} · ${cond.draw[1]} · ${cond.fuel[1]}`);
@@ -79,7 +82,8 @@ export function step(S, dt=FIRE.tick){
   const gas  = Math.min(S.eff.gas, fuelCap);
   S.fuel += gas*dt;                       // gas-minutes burned. the bill is metered, not guessed.
   const need = gas*F.stoich;
-  const air  = S.eff.air*F.airPerNotch + S.eff.damper*F.airPerDamper*(1+S.cond.draw[2]);
+  const draw = S.cond.draw[2] + S.flueWear;      // a sooty flue draws differently (§5.5)
+  const air  = S.eff.air*F.airPerNotch + S.eff.damper*F.airPerDamper*(1+draw);
   const ratio= need>0.001 ? air/need : 4;
   S.ratio=ratio;
   const d = ratio-F.effPeak;
@@ -90,7 +94,7 @@ export function step(S, dt=FIRE.tick){
   // ---- heat balance ----
   const heatIn = gas*combEff*F.calorific*(1+S.cond.kiln[2]*0.35);
   const above  = Math.max(0,S.temp-F.ambient);
-  const flu    = (F.fluLossBase + S.eff.damper*F.fluLossPerNotch*(1+S.cond.draw[2]))*above/100;
+  const flu    = (F.fluLossBase + S.eff.damper*F.fluLossPerNotch*(1+draw))*above/100;
   const shell  = F.shellLoss*Math.pow(above/1000,F.shellPow)*1000;  // radiative, derived in tests/calibrate.mjs
   const dT     = (heatIn-flu-shell)/F.thermalMass;
   S.temp = Math.max(F.ambient, S.temp+dT*dt);
@@ -111,7 +115,9 @@ export function step(S, dt=FIRE.tick){
   const stir = clamp((S.eff.air/F.airMax)*0.6 + (S.eff.damper/F.damperMax)*0.4, 0, 1);
   for(const [k,P] of Object.entries(POSITIONS)){
     const p=S.pos[k];
-    const off = P.heat*(1-stir*0.55)*46;                 // °F offset for this shelf
+    // glazed brick throws heat back — a shelf you have run glaze onto runs hotter
+    const mod = S.posMod[k] || 0;
+    const off = (P.heat + (mod.heat||0))*(1-stir*0.55)*46;   // °F offset for this shelf
     const pt  = S.temp+off;
     p.peak=Math.max(p.peak,pt);
     p.hw += (pt>1200 ? Math.exp((pt-F.hwT0)/F.hwA) : 0)*dt/60;

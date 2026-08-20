@@ -537,3 +537,55 @@ export const OPENING = {
   line:  'you can see all of it and none of it properly. take them out one at a time — the one you flagged comes out last, which is either a reward or a punishment and you will not know which until it does.',
   noflag:'you flagged nothing this firing, so they come out in the order you stacked them.',
 };
+
+// ---------------------------------------------------------------------------
+// THE KILN'S OWN HISTORY (M4). §5.5.
+// "Real kilns develop character. Yours does too, persistently, across the whole
+// save." The bible is explicit that this is also THE ANSWER TO "why fire it a
+// second time" (§21 trap 5): a kiln with a history is a different kiln, so
+// firing #6 is not firing #2 with different colours.
+//
+// ⚠️ Every number here is a SIM INPUT, not randomness. Same kiln state + same
+// seed = the same firing, byte for byte. Wear is something you CAUSED and can
+// read on the load screen before you commit — it never ambushes you (§19.3, §19.5).
+// ---------------------------------------------------------------------------
+export const WEAR = {
+  // glaze runs onto a shelf and never fully comes off. glazed brick reflects heat,
+  // so a shelf you have run glaze onto gets HOTTER — a hot spot becomes hotter.
+  glazePerRun: 1,
+  glazeHeat: 0.075,        // added POSITIONS.heat per point of glaze
+  glazeMax: 4,
+
+  // shelves warp from repeated work at the top of the range. a warped shelf
+  // cannot take a tall piece — it will not sit flat and it will go over.
+  // ⚠️ MEASURED. This was 0.94 × cone 10, which 71% of shelves cross in any decent
+  // firing — every shelf warped every night and the kiln refused all tall work
+  // within three firings. Warping is for genuine OVERfiring: at 1.35 × cone 11
+  // it is 11% of shelves per firing, so a shelf goes out of true roughly every
+  // nine firings and needs three of those to stop taking tall pieces.
+  warpAtCone11: 1.35,      // multiple of cone 11 heat work that warps a shelf
+  warpMax: 4,
+  warpBlocksTall: 3,       // warp at or above this refuses tall forms
+  tallForms: ['bottle','vase','jar'],
+
+  // after a hard reduction the flue draws differently for a firing or two. soot.
+  fluePerHardRed: -0.10,   // added to the draw condition's effect
+  flueHardRedMin: 150,     // sim-minutes of reduction that counts as "hard"
+  flueDecay: 0.5,          // how much of it survives into the next firing
+  flueFloor: -0.24,
+
+  // what it costs to put a shelf right again
+  shelfCost: 38,
+};
+
+// §6.4 — BUYING CERTAINTY. Two ways to convert uncertainty into knowledge, both
+// costly, both real potter's technique. "That's the trade: information costs
+// production."
+export const CERTAINTY = {
+  // run the burners ten minutes before you load. costs fuel and half an hour, and
+  // tells you tonight's kiln PRECISELY instead of approximately.
+  trial: { cost: 22, label: 'run the burners ten minutes' },
+  // a test tile takes a shelf a pot could have had, and can be pulled through the
+  // spyhole mid-firing with long tongs for one real, unambiguous observation.
+  tile:  { cost: 3, max: 3 },
+};
