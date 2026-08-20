@@ -64,6 +64,22 @@ h1,h2,h3{font-weight:500;margin:0;letter-spacing:.06em}
 .slot .pn{font-size:10px;color:var(--dim2);letter-spacing:.07em;text-transform:uppercase}
 .slot .it{margin-top:8px;color:var(--paper);font-size:12.5px;line-height:1.35}
 .slot .ig{color:var(--fire);font-size:11px}
+/* TEACHING (M1.1) — Ruthie's aside, and the consultable primer. §10 */
+.guide{border:1px solid var(--fire);border-left-width:3px;background:#1b1410;padding:14px 16px;margin:14px 0;display:none}
+.guide.on{display:block}
+.guide .gw{color:var(--fire);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;margin-bottom:7px}
+.guide .gt{color:var(--paper);font-size:13.5px;line-height:1.65}
+.guide .gx{margin-top:11px;font-size:11.5px;padding:5px 12px}
+.ovl{position:fixed;inset:0;background:rgba(6,5,4,.93);z-index:60;display:none;overflow:auto;padding:40px 20px}
+.ovl.on{display:block}
+.ovl .sheet{max-width:760px;margin:0 auto;border:1px solid var(--line2);background:var(--ink2);padding:30px 34px}
+.ovl h2{margin:0 0 4px;font-size:19px;font-weight:400;color:var(--paper)}
+.ovl .psub{color:var(--dim2);font-size:12px;margin-bottom:22px}
+.ovl .pg{margin-bottom:20px;padding-bottom:18px;border-bottom:1px solid var(--line)}
+.ovl .pg:last-of-type{border-bottom:0}
+.ovl .pg h3{margin:0 0 7px;font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--fire);font-weight:400}
+.ovl .pg p{margin:0;color:var(--pale);font-size:13.5px;line-height:1.72}
+.helpbtn{font-size:12px;padding:5px 11px}
 /* THE VERDICT (M1) — the board, the clauses, the ledger. §4.4, §4.5, §12 */
 .board{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:16px 0}
 .brief{border:1px solid var(--line2);padding:14px;cursor:pointer;transition:.12s;display:flex;flex-direction:column}
@@ -165,23 +181,28 @@ canvas.cones{width:100%;height:150px;border:1px solid var(--line);background:#0f
     <div style="display:flex;gap:12px">
       <button class="prime lc" id="b-new">light the kiln</button>
       <button class="lc" id="b-shelf0">the shelf</button>
+      <button class="lc" id="b-primer">how a firing goes</button>
     </div>
+    <div class="cred lc" style="margin-top:14px;opacity:.75">first time? read that middle one. press <b>?</b> for it at any point.</div>
     <div class="cred lc">a DIRTY BOY DEVS game</div>
   </section>
 
   <section id="scr-cond" class="scr">
     <div class="hd"><h2 class="lc">before you load</h2><span class="sub lc" id="firingno"></span></div>
     <div class="note lc">read the kiln before you read the shelf. everything after the door is bricked up follows from what it's doing tonight — and you get to see all of it now.</div>
+    <div class="guide" id="g-cond"></div>
     <div class="conds" id="conds"></div>
     <div class="note lc" id="condread"></div>
     <h3 class="lc" style="margin:22px 0 0;font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim2);font-weight:400">the board</h3>
     <div class="note lc" style="margin-top:6px">work somebody has asked for. take one or take none — you fire either way, and every pot you make is yours regardless.</div>
+    <div class="guide" id="g-board"></div>
     <div class="board" id="board"></div>
     <div class="foot"><span class="sub lc" id="moneyline"></span><span class="sp"></span><button class="prime lc" id="b-toload">the damp room →</button></div>
   </section>
 
   <section id="scr-load" class="scr">
     <div class="hd"><h2 class="lc">the load</h2><span class="sub lc">position is chemistry. pick a piece, then pick its shelf.</span></div>
+    <div class="guide" id="g-load"></div>
     <div class="loadwrap">
       <div class="damp">
         <div class="k" style="margin-bottom:8px">the damp room</div>
@@ -203,6 +224,7 @@ canvas.cones{width:100%;height:150px;border:1px solid var(--line);background:#0f
 
   <section id="scr-fire" class="scr">
     <div class="hd"><h2 class="lc">the firing</h2><span class="sub lc" id="clock"></span></div>
+    <div class="guide" id="g-fire"></div>
     <div class="fire">
       <div class="inst">
         <div><div class="k">the spyhole</div><canvas class="spy" id="spy" width="560" height="300"></canvas></div>
@@ -232,6 +254,7 @@ canvas.cones{width:100%;height:150px;border:1px solid var(--line);background:#0f
   </section>
 
   <section id="scr-cool" class="scr" style="align-items:center;justify-content:center;text-align:center">
+    <div class="guide" id="g-cool" style="max-width:620px;text-align:left"></div>
     <div class="k">it's cooling</div>
     <div class="big" id="cooltemp">—</div>
     <div id="coolbar" style="width:520px"><i style="width:0"></i></div>
@@ -244,6 +267,7 @@ canvas.cones{width:100%;height:150px;border:1px solid var(--line);background:#0f
 
   <section id="scr-unload" class="scr">
     <div class="hd"><h2 class="lc">the unload</h2><span class="sub lc" id="unprog"></span></div>
+    <div class="guide" id="g-unload"></div>
     <div id="unwrap">
       <canvas id="potcv"></canvas>
       <div class="unside">
@@ -259,6 +283,7 @@ canvas.cones{width:100%;height:150px;border:1px solid var(--line);background:#0f
 
   <section id="scr-verdict" class="scr">
     <div class="hd"><h2 class="lc">the verdict</h2><span class="sub lc" id="vsub"></span></div>
+    <div class="guide" id="g-verdict"></div>
     <div class="vwrap">
       <div class="vcol">
         <div class="vcard" id="v-com"></div>
@@ -279,6 +304,12 @@ canvas.cones{width:100%;height:150px;border:1px solid var(--line);background:#0f
   </section>
 
 </div>
+<div class="ovl" id="primer"><div class="sheet">
+  <h2 class="lc">how a firing goes</h2>
+  <div class="psub lc">the whole of it, on one page. press ? at any time.</div>
+  <div id="primerbody"></div>
+  <div class="foot" style="margin-top:8px"><span class="sp"></span><button class="prime lc" id="b-primerclose">close</button></div>
+</div></div>
 <div class="toast" id="toast"></div>
 
 <script type="importmap">{"imports":{"three":"./lib/three.module.js"}}</script>

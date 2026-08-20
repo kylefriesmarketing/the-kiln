@@ -2,7 +2,7 @@
 // The sim is in sim.js and knows nothing about the DOM. This file is the only
 // place that touches document, and the only place Math.random is allowed.
 import * as THREE from 'three';
-import { FIRE, FORMS, GLAZES, POSITIONS, EVENT_NAMES, ZONE_NAMES, ECON, MOOD, CLIENTS } from './data.js';
+import { FIRE, FORMS, GLAZES, POSITIONS, EVENT_NAMES, ZONE_NAMES, ECON, MOOD, CLIENTS, GUIDE, PRIMER } from './data.js';
 import { judge, counterfactuals, settle, offerCommissions } from './verdict.js';
 import { newFiring, step, setControl, harvest, openKiln, coneDown, CONE_ORDER, hhmm, lcg } from './sim.js';
 import { makePot, nameOf } from './pot.js';
@@ -18,7 +18,7 @@ const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const KEY='kiln-save';
 const DEFAULTS={ started:true, firings:0, pots:[], broken:0, effects:{}, notebook:{},
                  members:{}, kiln:{scars:0}, settings:{mute:false},
-                 money:ECON.startMoney, comDone:{}, ledger:[] };
+                 money:ECON.startMoney, comDone:{}, ledger:[], taught:{} };
 // ⚠️ BUG FIXED (M1): an EMPTY object default ({} — effects, notebook, members, comDone)
 // recursed into mergeDefaults(saved, {}), whose loop over Object.keys({}) does nothing,
 // so it returned {} and silently WIPED the saved value on every reload. "17/16 effects
@@ -56,6 +56,30 @@ let G={ phase:'title', S:null, damp:[], slots:{}, sel:null, flag:null,
         offers:[], taken:null, fired:[], verdict:null, bill:null };
 
 function show(id){ document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on')); $('#'+id).classList.add('on'); }
+
+// ---------------------------------------------------------------------------
+// TEACHING (§10). Ruthie says a thing ONCE, the first time you reach a screen,
+// and then never again — but ? brings the whole primer back forever.
+// ⚠️ NOT a tooltip and NOT a modal wall: it is an aside in a person's voice, and
+// it never blocks the screen it is explaining. §10 bans tutorials in favour of
+// diegetic teaching plus a consultable reference; this is both halves.
+// ---------------------------------------------------------------------------
+function teach(key, force){
+  const g=GUIDE[key]; if(!g) return;
+  const host=$('#g-'+key); if(!host) return;
+  if(SAVE.taught[key] && !force){ host.classList.remove('on'); return; }
+  host.innerHTML=`<div class="gw">${g.who}</div><div class="gt lc">${g.t.replace(/\s+/g,' ').trim()}</div>`;
+  const b=el('button','gx lc','right, got it');
+  b.onclick=()=>{ A.click(); SAVE.taught[key]=1; save(); host.classList.remove('on'); };
+  host.appendChild(b); host.classList.add('on');
+}
+function showPrimer(){
+  const B=$('#primerbody'); B.innerHTML='';
+  for(const p of PRIMER){ const d=el('div','pg');
+    d.innerHTML=`<h3 class="lc">${p.h}</h3><p class="lc">${p.t.replace(/\s+/g,' ').trim()}</p>`; B.appendChild(d); }
+  $('#primer').classList.add('on');
+}
+function hidePrimer(){ $('#primer').classList.remove('on'); }
 let toastT=0;
 function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('on');
   clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('on'),2600); }
@@ -85,7 +109,7 @@ function startFiring(){
   $('#condread').textContent = sum>0.15 ? "it'll want less gas than you think tonight."
     : sum<-0.15 ? "this is a slow night. start earlier than feels right, and don't chase it with the gas."
     : "an ordinary night. nothing is doing you any favours and nothing is against you.";
-  show('scr-cond');
+  show('scr-cond'); teach('cond'); teach('board');
 }
 
 // The board. Deterministic per firing, so reloading cannot reroll an easier brief.
@@ -201,7 +225,9 @@ function beginFire(){
   buildCtrls(); $('#log').innerHTML=''; lastLog=0;
   G.speed=1; drawSpeed();
   A.burnersOn();
-  show('scr-fire'); loop();
+  // ⚠️ this is the note that matters most — control lag and the one-way door are the
+  // two things a first-timer cannot possibly infer, and both are unforgiving.
+  show('scr-fire'); teach('fire'); loop();
 }
 
 function buildCtrls(){
@@ -376,7 +402,7 @@ function drawCones(){
 // 4. COOLING — the gate you agree with. (§9.1)
 // ---------------------------------------------------------------------------
 let coolTick=0;
-function toCool(){ cancelAnimationFrame(G.raf); G.raf=0; show('scr-cool'); A.doorCrack(); }
+function toCool(){ cancelAnimationFrame(G.raf); G.raf=0; show('scr-cool'); teach('cool'); A.doorCrack(); }
 function paintCool(){
   const S=G.S; if(!$('#scr-cool').classList.contains('on')) return;
   $('#cooltemp').textContent=Math.round(S.temp)+'°F';
@@ -412,8 +438,23 @@ function initThree(){
   const cam=new THREE.PerspectiveCamera(26,1,0.05,100);
   const holder=new THREE.Group(); sc.add(holder);
   three={r,sc,cam,holder};
-  const resize=()=>{ const w=cv.clientWidth,h=cv.clientHeight;
-    r.setSize(w,h,false); cam.aspect=w/h; cam.updateProjectionMatrix(); };
+  // ⚠️⚠️ THE UNLOAD WAS A BLACK SCREEN, AND THIS IS WHERE IT LIVED. (Kyle, 2026-08-19)
+  // The renderer used to be built while #scr-unload was still display:none, so the
+  // canvas measured 0×0. That does three separate fatal things at once:
+  //   1. setSize(0,0) sets canvas.width=0 — the canvas has NO backing store, which
+  //      the browser stretches over the CSS box as pure black.
+  //   2. aspect = 0/0 = NaN, so the projection matrix is NaN and nothing projects.
+  //   3. the ONLY render() call was inside a requestAnimationFrame loop, so the
+  //      first frame was hostage to an async ResizeObserver arriving first.
+  // Never size a renderer off a hidden element. Never divide to get an aspect
+  // without guarding the denominator. Never let the first frame depend on rAF.
+  const resize=()=>{
+    // fall back to the wrapper, then to a sane default — never 0, never NaN
+    const w=cv.clientWidth||cv.parentElement?.clientWidth||960;
+    const h=cv.clientHeight||cv.parentElement?.clientHeight||620;
+    r.setSize(w,h,false); cam.aspect=w/h; cam.updateProjectionMatrix();
+  };
+  three.resize=resize;
   new ResizeObserver(resize).observe(cv); resize();
   (function spin(){ requestAnimationFrame(spin);
      if(!document.getElementById('scr-unload').classList.contains('on')) return;
@@ -429,8 +470,11 @@ function toUnload(){
   raw.sort((a,b)=>order.indexOf(a.pos)-order.indexOf(b.pos));
   if(G.flag){ const i=raw.findIndex(p=>p.pos===G.flag); if(i>=0) raw.push(raw.splice(i,1)[0]); }
   G.results=raw; G.unIdx=-1; G.fired=[];
-  if(!three) initThree();
-  show('scr-unload'); nextPot();
+  // ⚠️ show() FIRST. initThree() measures the canvas, and a display:none canvas
+  // measures 0×0 — that was the black screen. Order here is load-bearing.
+  show('scr-unload'); teach('unload');
+  if(!three) initThree(); else three.resize();
+  nextPot();
 }
 
 function nextPot(){
@@ -452,7 +496,12 @@ function nextPot(){
   const d=Math.max(hg/2/halfTan,maxR/halfTan)*1.3;
   const squat=Math.min(1,(2*maxR)/Math.max(hg,1e-3)/2.2);
   three.cam.position.set(0,hg*0.10+d*squat*0.5,d*(1-squat*0.18));
-  three.cam.lookAt(0,0,0); three.cam.updateProjectionMatrix();
+  three.cam.lookAt(0,0,0);
+  // re-measure, THEN project, THEN draw one frame right now. rAF is suspended in a
+  // hidden pane and ResizeObserver is async; neither may be relied on for frame one.
+  three.resize();
+  three.cam.updateProjectionMatrix();
+  three.r.render(three.sc, three.cam);
 
   const pot=mesh.userData.pot;
   const dunted=pot.events.some(e=>e.k==='dunt');
@@ -497,7 +546,7 @@ function finish(){
   // the collectible: a firing where nothing broke. (§20)
   const perfect=G.results.every((p,i)=>SAVE.pots[SAVE.pots.length-G.results.length+i].sound);
   if(perfect){ SAVE.kilnGod=true; toast('nothing broke. the kiln god stays on the arch.'); A.chime(true); }
-  drawVerdict(); save(); show('scr-verdict');
+  drawVerdict(); save(); show('scr-verdict'); teach('verdict');
 }
 
 // ---------------------------------------------------------------------------
@@ -645,7 +694,7 @@ function drawShelf(){
 // ---------------------------------------------------------------------------
 $('#b-new').onclick=()=>{ startFiring(); };
 $('#b-shelf0').onclick=()=>{ drawShelf(); show('scr-shelf'); };
-$('#b-toload').onclick=()=>{ drawLoad(); show('scr-load'); };
+$('#b-toload').onclick=()=>{ drawLoad(); show('scr-load'); teach('load'); };
 $('#b-auto').onclick=autoStack;
 $('#b-brick').onclick=()=>{ A.damper(); beginFire(); };
 $('#b-shutdown').onclick=()=>{ setControl(G.S,'gas',0); setControl(G.S,'damper',0);
@@ -656,12 +705,21 @@ $('#b-next').onclick=()=>{ A.click(); nextPot(); };
 $('#b-toshelf').onclick=()=>{ A.click(); drawShelf(); show('scr-shelf'); };
 $('#b-again').onclick=()=>{ cancelAnimationFrame(G.raf); startFiring(); };
 setInterval(()=>{ if($('#scr-cool').classList.contains('on')){ for(let i=0;i<3;i++) step(G.S,3); paintCool(); } },80);
+$('#b-primer').onclick=()=>{ A.click(); showPrimer(); };
+$('#b-primerclose').onclick=()=>{ A.click(); hidePrimer(); };
+addEventListener('keydown',e=>{
+  if(e.key==='?'||e.key==='/'){ $('#primer').classList.contains('on')?hidePrimer():showPrimer(); return; }
+  if(e.key==='Escape'&&$('#primer').classList.contains('on')){ hidePrimer(); return; }
+});
 addEventListener('keydown',e=>{ if(e.key==='m'){ SAVE.settings.mute=!SAVE.settings.mute; A.setMute(SAVE.settings.mute); save(); toast(SAVE.settings.mute?'muted':'sound on'); }});
 A.setMute(SAVE.settings.mute);
 
 // debug object from day one (§24.10)
 window.__kiln={ G, SAVE, sim:{newFiring,step,setControl,harvest,coneDown}, makePot,
   verdict:{judge,counterfactuals,settle,offerCommissions},
+  // teaching hooks — rAF is suspended in a hidden pane, so toCool()/loop() never run
+  // under headless verification. These let a test reach the notes directly.
+  teach, showPrimer, hidePrimer, retaught(){ SAVE.taught={}; save(); },
   wipe(){ localStorage.removeItem(KEY); location.reload(); },
   skip(){ while(G.S.phase==='firing') step(G.S); } };
 console.log('[the kiln] ready · window.__kiln');

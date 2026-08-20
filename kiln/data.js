@@ -290,3 +290,94 @@ export const MOOD = {
   ruined:-2,         // it dunted, and it was the piece they cared about
   thickHand:0.26,    // Desmond's extra glaze thickness. his pieces crawl and run.
 };
+
+// ---------------------------------------------------------------------------
+// TEACHING. §10, and Kyle's playtest note of 2026-08-19 ("there needs to be more
+// of a tutorial").
+// ⚠️ §10 bans tutorials and tooltips, citing Nauticrawl — but it bans them in
+// favour of DIEGETIC teaching plus a persistent consultable reference, and it is
+// equally explicit that Nauticrawl's refusal to ever confirm anything is why it
+// stayed a cult game: "take the diegetic teaching, reject the refusal to confirm."
+// So nobody here is taught by a floating tooltip. Ruthie teaches you, because she
+// runs the tuesday class and she gave you this job, and §13's arc ends with you
+// teaching someone else — which only lands if it started with someone teaching you.
+// Each note appears ONCE, the first time you reach that screen, and lives behind
+// the ? key forever after.
+export const GUIDE = {
+  cond: { who:'Ruthie',
+    t:`everything that is luck tonight is on this screen, and it is on it now, before you
+       have decided anything. cold brick climbs slower. a flue drawing hard pulls your heat
+       up the chimney. read them, then load for them — that is the whole job.` },
+
+  board: { who:'Ruthie',
+    t:`take a commission or take none. if you take one it gets judged line by line and
+       somebody's name is on the judging, so it is their taste and not a mark out of ten.
+       either way you keep every pot that comes out. that is not a consolation, it is the rule.` },
+
+  load: { who:'Ruthie',
+    t:`where a piece sits decides what it becomes. the flame lane is hottest and reduces
+       hardest — copper and shino love it. the cool bottom runs forty degrees cold and will
+       crawl a thick glaze right off the clay. the dead corner is where work goes to be
+       disappointing. your own three you can change: click the form, click the glaze.
+       and flag one piece before you brick up — it comes out last, when it counts.` },
+
+  fire: { who:'Ruthie',
+    t:`three knobs and none of them answer you. a change takes fifteen to thirty minutes to
+       show at the spyhole — the faint orange mark on a dial is your last change, still on its
+       way. so you are never steering the kiln in front of you, you are steering the one from
+       twenty minutes ago. the box up top says what it wants right now. the cones read heat
+       work, the pyrometer reads temperature, and they are not the same thing.
+       one more: if cone 06 goes down before you have begun reducing, there is no reduction
+       tonight. not less. none. nothing you do afterwards reopens it.` },
+
+  cool: { who:'Ruthie',
+    t:`now you wait, and it takes longer than the firing did. you cannot open a hot kiln —
+       under about four hundred degrees or you will crack every piece in there on the way
+       through the inversions. the game will let you do it. it will be your fault.` },
+
+  unload: { who:'Ruthie',
+    t:`one at a time, by hand, the way the shelves came out. the name underneath is built from
+       what actually happened to it in there — every mark on it has a cause and the cause is
+       usually something you did.` },
+
+  verdict: { who:'Ruthie',
+    t:`the brief gets marked, the pot never does. underneath that is the margin: what came
+       closest, which of your inputs it turned on, and how much more would have carried it.
+       read that part. it is the only place the kiln explains itself.` },
+};
+
+// The persistent, consultable reference — Papers Please's rulebook, which the research
+// ranks first among the four teaching patterns. Reachable from the title and from ? at
+// any time, so knowledge lives in the player instead of behind an unlock.
+export const PRIMER = [
+  { h:'the night, in order',
+    t:`candle low and open until the ware is dry · climb steadily to cone 012 · CLOSE THE
+       DAMPER and hold body reduction twenty to thirty minutes · open back up and burn clean
+       to cone 6 · back into reduction for the glazes · neutral through cone 9 · soak at cone
+       10 · twenty minutes clean, then off, then shut the damper.` },
+  { h:'the three controls',
+    t:`GAS is fuel — more heat, and more unburned fuel if the air cannot keep up. AIR is
+       combustion and turbulence, and turbulence is what reduces the BOTTOM of the kiln.
+       THE DAMPER is back pressure: closing it holds the fire and the atmosphere in, opening
+       it sends your heat up the chimney. the damper is the strongest and the most dangerous.` },
+  { h:'reduction, which is the point',
+    t:`a rich fire — more fuel than air — is starved of oxygen, so it pulls oxygen back out of
+       the glaze itself. that is reduction, and it is what makes copper go blood red instead of
+       green, celadon go blue-green instead of yellow, iron go black and break to rust.
+       you read it at the spyhole: long, soft, licking orange is reducing. short, blue and
+       bushy is clean. green-tinted is neutral.` },
+  { h:'cones, and why the pyrometer lies',
+    t:`a cone bends from heat WORK — temperature multiplied by time. so the same peak reached
+       slowly is more work than the same peak reached fast, and a pot fired quickly to cone 10's
+       temperature comes out underfired anyway. steer by the cones. the pyrometer is a hint.` },
+  { h:'the one-way door',
+    t:`if you have not begun reducing by the time cone 06 goes down, you will get no reduction
+       in that firing at all. it is not a penalty, it is an oxidation firing: copper comes out
+       green, celadon yellowish, shino white and flat. everything is sound. nothing is what
+       anybody asked for. the log will say exactly when it happened.` },
+  { h:'what goes wrong, and what it means',
+    t:`COLD BOTTOM — damper too open, or too much primary air. GLAZE RUN — laid on too thick;
+       leave the foot bare. CRAWLING — thick glaze on a cold shelf. STALL near the top —
+       counter-intuitively, too MUCH gas: the excess draft carries heat away, so cut it back.
+       DUNTING — cooled too fast, or you opened it hot.` },
+];

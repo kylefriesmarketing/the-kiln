@@ -61,6 +61,17 @@ no reputation bar and nobody ever says *"that was not very kind."*
 | `kiln/audio.js` | WebAudio, zero sound files. |
 | `gate.html` | the render gate — 30 pots, one firing each, for the squint test. |
 
+## Being taught it
+
+There is no tutorial overlay and no tooltips (§10). Instead **Ruthie tells you one
+thing per screen, once**, the first time you get there — she runs the tuesday class
+and she gave you this job. Dismiss a note and it stays dismissed.
+
+**Press ? at any time** for *how a firing goes* — the whole night in order, the three
+controls, what reduction is, why the pyrometer lies, the one-way door, and the fault
+table. That page is the consultable reference the research ranks first; it is also on
+the title screen.
+
 ## Tests
 ```
 node tests/soak.mjs 24      # determinism, the one-way door, kiln geography, distributions
