@@ -97,7 +97,9 @@ export function firePot(seed, opts={}){
   const heatwork  = clamp((opts.heat ?? 0.5+rng()*0.5) + P.heat*0.16, 0, 1.35);
   const reduction = clamp((opts.red  ?? rng()) + P.red*0.22, -0.3, 1.3);
   const coolRate  = opts.cool ?? rng();                  // 0 slow … 1 fast
-  const applied   = clamp(G.base + (rng()-0.5)*0.52, 0.10, 1.02); // how thick it was dipped
+  // how thick it was dipped. opts.thick is the POTTER's hand (§12.1): Desmond glazes
+  // everything like he is frosting it, so his pieces crawl and run and that is legible.
+  const applied   = clamp(G.base + (opts.thick ?? 0) + (rng()-0.5)*0.52, 0.10, 1.10);
   const flow      = clamp(G.flow*(0.55+heatwork*0.75)+P.flow, 0, 1.6);
   const flameU    = rng();                                // which way it faced
 
@@ -110,12 +112,12 @@ export function firePot(seed, opts={}){
   // ---- event selection: every event has a cause ----
   const ev=[]; const add=(k,zone,i)=>ev.push({k,zone,i:clamp(i,0.25,1)});
   if(heatwork>0.55 && applied<0.62) add('break','rim', (heatwork-0.5)*1.8);
-  if(applied>TUNE.runThreshold && flow>0.75) add('run','belly',(applied-0.6)*2.2);
+  if(applied>TUNE.runThreshold && flow>0.62) add('run','belly',(applied-0.46)*2.4);
   if(FORMS[formKey].open && applied>0.5 && flow>0.6) add('pool','foot',flow*0.7);
-  if(effGlaze==='tenmoku' && coolRate<0.45 && heatwork>0.7) add('harefur','belly',1-coolRate);
-  if(effGlaze==='tenmoku' && coolRate<0.2 && heatwork>0.9 && rng()>0.55) add('oilspot','shoulder',0.9);
+  if(effGlaze==='tenmoku' && coolRate<0.62 && heatwork>0.60) add('harefur','belly',1-coolRate);
+  if(effGlaze==='tenmoku' && coolRate<0.34 && heatwork>0.84 && rng()>0.35) add('oilspot','shoulder',0.9);
   if(effGlaze==='shino' && reduction>0.6) add('carbontrap','lee',reduction);
-  if(applied>0.8 && P.heat<-0.5) add('crawl','belly',applied);
+  if(applied>0.78 && P.heat<-0.45) add('crawl','belly',applied);
   if(effGlaze==='celadon'||effGlaze==='chun'||(effGlaze==='clear'&&rng()>0.5)) add('craze','belly',0.6+rng()*0.4);
   if(P.flash>0.3 && rng()<P.flash) add('flashing','flame',P.flash);
   if(P.ash>0.5 && rng()<P.ash) add('ashfly','flame',P.ash);
@@ -189,7 +191,7 @@ function buildMaps(p, prof){
     switch(e.k){
 
       case 'run': { // vertical drips that travel and STOP. the fingerprint of a decision.
-        const n=2+Math.round(e.i*4);
+        const n=3+Math.round(e.i*5);
         for(let d=0;d<n;d++){
           const u0=R(), top=0.35+R()*0.45, len=(0.18+R()*0.5)*e.i, w=0.006+R()*0.014;
           for(let s=0;s<260;s++){
@@ -197,7 +199,7 @@ function buildMaps(p, prof){
             const taper=1-Math.pow(s/260,2.0), wid=w*(0.6+taper*0.9);
             for(let dx=-wid*W;dx<=wid*W;dx++){
               const f=1-Math.abs(dx/(wid*W));
-              const i=px(u0+dx/W, v); T[i]=clamp(T[i]+0.55*f*taper*e.i,0,1.4); gloss[i]=Math.min(1.15,gloss[i]+0.1*f);
+              const i=px(u0+dx/W, v); T[i]=clamp(T[i]+0.72*f*taper*e.i,0,1.4); gloss[i]=Math.min(1.15,gloss[i]+0.1*f);
             }
           }
           // the bead at the bottom of the run

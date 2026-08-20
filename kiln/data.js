@@ -24,16 +24,22 @@ export const GLAZES = {
     ramp:[[0.00,[206,182,158]],[0.14,[178,118,96]],[0.30,[164,52,40]],[0.52,[124,20,22]],[0.74,[86,14,20]],[1.00,[52,12,18]]] },
   oribe:   { name:'oribe', gloss:0.96, base:0.50, flow:0.80, sat:1.0,
     ramp:[[0.00,[190,196,150]],[0.18,[142,178,96]],[0.38,[86,148,62]],[0.60,[42,112,50]],[1.00,[20,72,44]]] },
-  shino:   { name:'shino', gloss:0.55, base:0.62, flow:0.28, sat:0.9,
-    ramp:[[0.00,[196,118,62]],[0.16,[214,158,104]],[0.34,[230,198,158]],[0.56,[238,224,200]],[1.00,[242,236,222]]] },
+  // ⚠️ shino/rutile/clear used to share a tan and made ONE beige pile at thumbnail
+  // size — 6 of 30 at the render gate. They are pulled apart on purpose now:
+  // shino = orange, rutile = olive-drab matte, clear = terracotta. Do not re-converge them.
+  // ⚠️ shino's base is NOT a colour knob — it drives crawl, which is shino's whole
+  // identity (§7.1) and the bible's example commission clause. Fix colour in the RAMP.
+  shino:   { name:'shino', gloss:0.55, base:0.62, flow:0.28, sat:0.95,
+    ramp:[[0.00,[178,76,30]],[0.15,[212,126,52]],[0.34,[232,172,102]],[0.58,[238,212,172]],[1.00,[244,232,214]]] },
   chun:    { name:'chun', gloss:0.94, base:0.55, flow:0.62, sat:0.95,
     ramp:[[0.00,[130,116,102]],[0.18,[126,132,132]],[0.38,[136,158,172]],[0.60,[164,192,208]],[1.00,[196,216,228]]] },
   ash:     { name:'ash', gloss:0.97, base:0.40, flow:1.00, sat:1.0,
     ramp:[[0.00,[176,146,102]],[0.20,[168,132,66]],[0.42,[142,110,44]],[0.66,[104,88,40]],[1.00,[62,60,34]]] },
-  rutile:  { name:'matte rutile', gloss:0.22, base:0.58, flow:0.35, sat:0.8,
-    ramp:[[0.00,[196,172,140]],[0.22,[186,164,132]],[0.46,[164,142,114]],[0.70,[138,120,100]],[1.00,[112,98,84]]] },
-  clear:   { name:'liner clear', gloss:0.93, base:0.30, flow:0.45, sat:0.7,
-    ramp:[[0.00,[212,198,176]],[0.30,[198,182,158]],[0.60,[182,166,142]],[1.00,[164,148,126]]] },
+  rutile:  { name:'matte rutile', gloss:0.22, base:0.58, flow:0.35, sat:0.86,
+    ramp:[[0.00,[214,198,152]],[0.22,[192,176,112]],[0.46,[152,142,94]],[0.70,[112,108,80]],[1.00,[74,78,64]]] },
+  // liner clear shows the BODY. A pot in clear should read as fired clay, not as beige glaze.
+  clear:   { name:'liner clear', gloss:0.93, base:0.30, flow:0.45, sat:0.78,
+    ramp:[[0.00,[202,152,112]],[0.30,[178,124,86]],[0.60,[150,99,66]],[1.00,[118,74,50]]] },
 };
 
 // The nine named positions. Position is chemistry. (§5.4)
@@ -76,7 +82,9 @@ export const TUNE = {
   mottle: 0.070,
   contrastLo: 0.10,   // thickness → ramp remap. widens the ramp traverse.
   contrastHi: 0.92,
-  runThreshold: 0.72, // thickness above which a run can start
+  // ⚠️ was 0.72, which fired maybe twice in thirty at the render gate. §8 calls a drip
+  // "the visible fingerprint of a decision you made blind" — it should be COMMON.
+  runThreshold: 0.58, // thickness above which a run can start
 };
 
 // ---------------------------------------------------------------------------
@@ -144,4 +152,141 @@ export const FIRE = {
     draw:  [['slack','the flue is slack today',-0.22],['normal','drawing normal',0],['hard','drawing hard',+0.24]],
     fuel:  [['low','the low tank nobody replaced',-0.20],['half','half a tank',-0.05],['full','a full tank',0]],
   },
+};
+
+// ---------------------------------------------------------------------------
+// THE VERDICT (M1). §4.4, §12.2, §12.3.
+// ⚠️ THE GAME NEVER SCORES A POT (§19.6). Not a star, not a percent, not a tier
+// word. It scores FULFILMENT OF A BRIEF, clause by clause, attributed to a person
+// with taste. Everything in this block judges a commission. Nothing in it — ever —
+// judges an object. If you find yourself adding a quality number, read §4.4 again.
+// ---------------------------------------------------------------------------
+
+// Clients have CONFLICTING taste, so a rejection is always attributable to a
+// person and never to a universal standard. "too bright for what she wanted" is
+// survivable. "quality: 2/5" is not.
+export const CLIENTS = {
+  okonkwo:  { n:'m. okonkwo',   of:'for the restaurant',    taste:'wants twelve of a thing and twelve of them the same.' },
+  vasquez:  { n:'jo vasquez',   of:'for the sunday stall',  taste:'sells to people who pick things up. wants a surface that rewards it.' },
+  ruthie:   { n:'ruthie',       of:'for the tuesday class', taste:'wants to be able to point at it and say: that. do that.' },
+  hollis:   { n:'the hollises', of:'for the wedding',       taste:'a set. they will use it every sunday for forty years.' },
+  ines:     { n:'ines',         of:'for the binder',        taste:'does not want it pretty. wants it repeatable.' },
+  teashop:  { n:'the tea shop', of:'on the corner',         taste:'green tea, white walls, and a bowl you can see the tea through.' },
+  marg:     { n:'marguerite',   of:'a favour',              taste:'will not say what she wants. you know what she wants.' },
+  walt:     { n:'walt',         of:'for his daughter',      taste:'has never once asked for anything. this is the first time.' },
+};
+
+// A commission is EXTERNAL, ENUMERATED, and ACCEPTED BEFORE THE FIRING.
+//   want    — what makes one of YOUR pieces a candidate for the brief
+//   need    — how many candidates must satisfy the clauses
+//   clauses — judged one at a time, pass/fail, each failure naming position + cause
+// Clause kinds: count · cone · event · noevent · anyevent · sound · reduced · noflip
+//               · sameglaze · sameform
+// ⚠️ Every `event` clause must name an effect the generator can actually produce.
+// Check tests/census.mjs before writing a brief around a 0.6% event.
+export const COMMISSIONS = [
+  { id:'okonkwo_bowls', client:'okonkwo', fee:210, need:2,
+    title:'two bowls, iron, breaking at the rim',
+    brief:'two wide bowls. cone 10. an iron glaze that breaks to rust where it runs thin over the rim. nothing crawled — they go in a dish pit, not a cabinet.',
+    want:{ form:'widebowl', glaze:'tenmoku' },
+    clauses:[ {k:'count'}, {k:'cone',v:'10'}, {k:'event',v:'break'}, {k:'noevent',v:'crawl'}, {k:'sound'} ] },
+
+  { id:'teashop_celadon', client:'teashop', fee:180, need:2,
+    title:'celadon, thin, and you can see through it',
+    brief:'two tea bowls in celadon. cone 10 and properly reduced — the yellow-green one you brought last time was not what we meant. crazing is fine. crazing is expected.',
+    want:{ form:'teabowl', glaze:'celadon' },
+    clauses:[ {k:'count'}, {k:'cone',v:'10'}, {k:'reduced'}, {k:'sound'} ] },
+
+  { id:'hollis_set', client:'hollis', fee:240, need:3,
+    title:'three mugs that match',
+    brief:'three mugs. the same glaze on all three, and they should look like they came out of the same kiln, because they will. no cracks. they are going to use these.',
+    want:{ form:'mug' },
+    clauses:[ {k:'count'}, {k:'sameglaze'}, {k:'sound'}, {k:'noevent',v:'dunt'} ] },
+
+  { id:'vasquez_surface', client:'vasquez', fee:165, need:2,
+    title:'something worth picking up',
+    brief:'two pieces, your choice of form. i do not care what colour. i care that when somebody turns it over in their hands there is something happening on it. give me a run, or a pool, or that streaked thing you did.',
+    want:{},
+    clauses:[ {k:'count'}, {k:'anyevent',v:['run','pool','harefur','crystal','carbontrap','ashfly']}, {k:'sound'} ] },
+
+  { id:'ruthie_demo', client:'ruthie', fee:120, need:1,
+    title:'one pot for the tuesday class',
+    brief:'one piece. i want to hold it up and say: this is what reduction does. so it needs to have actually been reduced, and it needs to be sound, and it needs to be obvious.',
+    want:{},
+    clauses:[ {k:'count'}, {k:'reduced'}, {k:'sound'}, {k:'cone',v:'9'} ] },
+
+  { id:'ines_repeat', client:'ines', fee:150, need:2,
+    title:'two the same, for the binder',
+    brief:'two pieces, same form, same glaze, both sound, both to cone 10. i am not testing you. i am testing the kiln, and you are the variable i cannot control.',
+    want:{},
+    clauses:[ {k:'count'}, {k:'sameform'}, {k:'sameglaze'}, {k:'cone',v:'10'}, {k:'sound'} ] },
+
+  { id:'marg_copper', client:'marg', fee:260, need:1,
+    title:'a bottle. red.',
+    brief:'one tall bottle in copper red. red. not green. you know the difference and so do i, and if it comes out green we will both know exactly when it happened.',
+    want:{ form:'bottle', glaze:'copperred' },
+    clauses:[ {k:'count'}, {k:'noflip'}, {k:'cone',v:'10'}, {k:'sound'} ] },
+
+  { id:'walt_plate', client:'walt', fee:140, need:1,
+    title:'one plate, for his daughter',
+    brief:'one plate. walt did not specify a glaze and would not if you asked. it should not be cracked. that is the whole brief and he will be embarrassed that he made it.',
+    want:{ form:'plate' },
+    clauses:[ {k:'count'}, {k:'sound'}, {k:'noevent',v:'dunt'} ] },
+
+  { id:'vasquez_shino', client:'vasquez', fee:195, need:2,
+    title:'two in shino, carbon and all',
+    brief:'shino. two pieces. i want the orange, and i want the grey shadow where the carbon got trapped — that is the one people ask about. crawling is fine, it sells.',
+    want:{ glaze:'shino' },
+    clauses:[ {k:'count'}, {k:'event',v:'carbontrap'}, {k:'reduced'}, {k:'sound'} ] },
+
+  { id:'teashop_oribe', client:'teashop', fee:200, need:2,
+    title:'two green. properly green.',
+    brief:'two pieces in oribe. the bright transparent green, which means oxidation, which means the top back shelf and a clean burn at the end. brown-red is not green.',
+    want:{ glaze:'oribe' },
+    clauses:[ {k:'count'}, {k:'noflip'}, {k:'cone',v:'10'}, {k:'sound'} ] },
+
+  { id:'okonkwo_service', client:'okonkwo', fee:230, need:3,
+    title:'three plates for service',
+    brief:'three plates. same glaze. they stack, they get hit, they go in a machine. i do not want a single pinhole and i do not want anything that came out of the cold shelf.',
+    want:{ form:'plate' },
+    clauses:[ {k:'count'}, {k:'sameglaze'}, {k:'noevent',v:'pinhole'}, {k:'noevent',v:'crawl'}, {k:'sound'} ] },
+
+  { id:'ruthie_ash', client:'ruthie', fee:175, need:1,
+    title:'let the fire do something',
+    brief:'one piece, in ash, somewhere the flame actually touches it. i want the class to see what the kiln does on its own when you put a pot in its way.',
+    want:{ glaze:'ash' },
+    clauses:[ {k:'count'}, {k:'anyevent',v:['ashfly','flashing','run']}, {k:'sound'} ] },
+
+  { id:'ines_crystal', client:'ines', fee:255, need:1,
+    title:'crystals, and slowly',
+    brief:'one piece in rutile or chun, cooled slow enough to grow crystals. shut the damper and leave it alone. if you open that kiln early i will know before you tell me.',
+    want:{},
+    clauses:[ {k:'count'}, {k:'event',v:'crystal'}, {k:'sound'}, {k:'noevent',v:'dunt'} ] },
+
+  { id:'marg_tenmoku', client:'marg', fee:270, need:1,
+    title:"hare's fur, if you can get it",
+    brief:'tenmoku, cooled right, and if the iron pulls into streaks down the wall then that is the one i want. if it does not, keep it, and we will both pretend i never asked.',
+    want:{ glaze:'tenmoku' },
+    clauses:[ {k:'count'}, {k:'event',v:'harefur'}, {k:'cone',v:'10'}, {k:'sound'} ] },
+];
+
+// §12.3 — money is small and it is NEVER the score. It buys materials and repairs
+// and nothing else. No storefront, no second kiln, no upgrade tree (§19.9).
+// Gas is metered from the sim's own fuel accumulator, never estimated.
+export const ECON = {
+  gasPerUnit: 0.0135,   // $ per gas-minute burned. calibrated against a real firing.
+  clayPerPiece: 4,      // what a piece of your own costs you in clay and glaze
+  memberFee: 9,         // members pay to have their work in your kiln, by the piece
+  startMoney: 60,
+};
+
+// §12.1 — the members remember. This is NOT a reputation bar and it is never shown
+// as a number. The consequence is that the damp room is fuller or emptier, and
+// somebody says something. Nobody ever says "that was not very kind."
+export const MOOD = {
+  min:-4, max:4,
+  good:+1,           // came out sound and did what their glaze should do
+  bad:-1,            // dunted, crawled to bits, or badly underfired
+  ruined:-2,         // it dunted, and it was the piece they cared about
+  thickHand:0.26,    // Desmond's extra glaze thickness. his pieces crawl and run.
 };

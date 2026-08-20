@@ -6,7 +6,8 @@ import { fileURLToPath } from 'url';
 // while the server looks perfectly healthy.
 const ROOT = fileURLToPath(new URL('.', import.meta.url));
 const MIME={'.html':'text/html','.js':'text/javascript','.mjs':'text/javascript','.css':'text/css','.png':'image/png','.json':'application/json'};
-const PORT = process.env.PORT || 8461;
+// ⚠️ 8461 collides with dont-touch in the workspace launch.json. Take an argv port.
+const PORT = process.argv[2] || process.env.PORT || 8461;
 http.createServer((q,s)=>{
   let f=path.normalize(path.join(ROOT, decodeURIComponent(q.url.split('?')[0])));
   if(!f.startsWith(path.normalize(ROOT))) { s.writeHead(403); return s.end(); }

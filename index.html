@@ -64,6 +64,36 @@ h1,h2,h3{font-weight:500;margin:0;letter-spacing:.06em}
 .slot .pn{font-size:10px;color:var(--dim2);letter-spacing:.07em;text-transform:uppercase}
 .slot .it{margin-top:8px;color:var(--paper);font-size:12.5px;line-height:1.35}
 .slot .ig{color:var(--fire);font-size:11px}
+/* THE VERDICT (M1) — the board, the clauses, the ledger. §4.4, §4.5, §12 */
+.board{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:16px 0}
+.brief{border:1px solid var(--line2);padding:14px;cursor:pointer;transition:.12s;display:flex;flex-direction:column}
+.brief:hover{border-color:var(--pale)}
+.brief.on{border-color:var(--fire);background:#241a12}
+.brief .bt{color:var(--paper);font-size:13.5px;line-height:1.35}
+.brief .bc{color:var(--fire);font-size:11px;margin-top:5px}
+.brief .bb{color:var(--dim);font-size:11.5px;margin-top:9px;line-height:1.5;flex:1}
+.brief .bf{color:var(--hot);font-size:11px;margin-top:10px;letter-spacing:.05em}
+.brief .bx{color:var(--dim2);font-size:10.5px;font-style:italic;margin-top:6px}
+.vwrap{display:grid;grid-template-columns:1.15fr 1fr;gap:26px;flex:1;min-height:0;overflow:auto}
+.vcol{display:flex;flex-direction:column;gap:14px;min-width:0}
+.vcard{border:1px solid var(--line);background:var(--ink2);padding:16px}
+.vcard h3{margin:0 0 4px;font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim2);font-weight:400}
+.clause{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+.clause:last-child{border-bottom:0}
+.clause .mk{flex:0 0 16px;font-size:13px;line-height:1.5}
+.clause.y .mk{color:var(--good)} .clause.n .mk{color:var(--bad)}
+.clause .ct{color:var(--paper);font-size:13px;line-height:1.5}
+.clause .cw{color:var(--dim);font-size:11.5px;line-height:1.55;margin-top:4px}
+.cf{border-left:2px solid var(--fire);padding:2px 0 2px 13px;margin-bottom:14px}
+.cf .cfw{color:var(--paper);font-size:13px;line-height:1.5}
+.cf .cfm{color:var(--dim);font-size:11.5px;line-height:1.55;margin-top:5px}
+.cf .cfg{color:var(--hot);font-size:11.5px;line-height:1.55;margin-top:5px}
+.led{display:flex;justify-content:space-between;padding:6px 0;font-size:12.5px;color:var(--dim)}
+.led b{color:var(--paper);font-weight:400}
+.led.tot{border-top:1px solid var(--line);margin-top:6px;padding-top:10px;color:var(--paper)}
+.led.tot b{color:var(--hot)}
+.led.neg b{color:var(--bad)}
+.vsay{color:var(--dim);font-size:12.5px;line-height:1.6;font-style:italic}
 .slot .hint{color:var(--dim2);font-size:10.5px;margin-top:5px;font-style:italic}
 .slot.flag::after{content:'★';position:absolute;top:6px;right:8px;color:var(--fire)}
 
@@ -144,7 +174,10 @@ canvas.cones{width:100%;height:150px;border:1px solid var(--line);background:#0f
     <div class="note lc">read the kiln before you read the shelf. everything after the door is bricked up follows from what it's doing tonight — and you get to see all of it now.</div>
     <div class="conds" id="conds"></div>
     <div class="note lc" id="condread"></div>
-    <div class="foot"><span class="sp"></span><button class="prime lc" id="b-toload">the damp room →</button></div>
+    <h3 class="lc" style="margin:22px 0 0;font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim2);font-weight:400">the board</h3>
+    <div class="note lc" style="margin-top:6px">work somebody has asked for. take one or take none — you fire either way, and every pot you make is yours regardless.</div>
+    <div class="board" id="board"></div>
+    <div class="foot"><span class="sub lc" id="moneyline"></span><span class="sp"></span><button class="prime lc" id="b-toload">the damp room →</button></div>
   </section>
 
   <section id="scr-load" class="scr">
@@ -222,6 +255,21 @@ canvas.cones{width:100%;height:150px;border:1px solid var(--line);background:#0f
         <button class="prime lc" id="b-next">take it out</button>
       </div>
     </div>
+  </section>
+
+  <section id="scr-verdict" class="scr">
+    <div class="hd"><h2 class="lc">the verdict</h2><span class="sub lc" id="vsub"></span></div>
+    <div class="vwrap">
+      <div class="vcol">
+        <div class="vcard" id="v-com"></div>
+        <div class="vcard" id="v-led"></div>
+      </div>
+      <div class="vcol">
+        <div class="vcard" id="v-cf"></div>
+        <div class="vcard" id="v-studio"></div>
+      </div>
+    </div>
+    <div class="foot"><span class="sp"></span><button class="prime lc" id="b-toshelf">the shelf →</button></div>
   </section>
 
   <section id="scr-shelf" class="scr">

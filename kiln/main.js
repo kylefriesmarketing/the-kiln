@@ -2,7 +2,8 @@
 // The sim is in sim.js and knows nothing about the DOM. This file is the only
 // place that touches document, and the only place Math.random is allowed.
 import * as THREE from 'three';
-import { FIRE, FORMS, GLAZES, POSITIONS, EVENT_NAMES, ZONE_NAMES } from './data.js';
+import { FIRE, FORMS, GLAZES, POSITIONS, EVENT_NAMES, ZONE_NAMES, ECON, MOOD, CLIENTS } from './data.js';
+import { judge, counterfactuals, settle, offerCommissions } from './verdict.js';
 import { newFiring, step, setControl, harvest, openKiln, coneDown, CONE_ORDER, hhmm, lcg } from './sim.js';
 import { makePot, nameOf } from './pot.js';
 import * as A from './audio.js';
@@ -16,10 +17,17 @@ const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 // ---------------------------------------------------------------------------
 const KEY='kiln-save';
 const DEFAULTS={ started:true, firings:0, pots:[], broken:0, effects:{}, notebook:{},
-                 members:{}, kiln:{scars:0}, settings:{mute:false} };
+                 members:{}, kiln:{scars:0}, settings:{mute:false},
+                 money:ECON.startMoney, comDone:{}, ledger:[] };
+// ⚠️ BUG FIXED (M1): an EMPTY object default ({} — effects, notebook, members, comDone)
+// recursed into mergeDefaults(saved, {}), whose loop over Object.keys({}) does nothing,
+// so it returned {} and silently WIPED the saved value on every reload. "17/16 effects
+// seen" reset to zero every time the page was refreshed and nobody noticed because
+// nothing else read those dicts yet. A free-form dict has no keys to merge — take it whole.
 function mergeDefaults(s,d=DEFAULTS){ const o={...d};
   for(const k of Object.keys(d)){ if(s&&s[k]!==undefined)
-    o[k]=(d[k]&&typeof d[k]==='object'&&!Array.isArray(d[k])) ? mergeDefaults(s[k],d[k]) : s[k]; }
+    o[k]=(d[k]&&typeof d[k]==='object'&&!Array.isArray(d[k])&&Object.keys(d[k]).length)
+      ? mergeDefaults(s[k],d[k]) : s[k]; }
   return o; }
 let SAVE=(()=>{ try{ return mergeDefaults(JSON.parse(localStorage.getItem(KEY)||'{}')); }
                 catch(e){ return mergeDefaults({}); } })();
@@ -44,7 +52,8 @@ const YOURS=['tenmoku','celadon','copperred','oribe','shino','chun','ash','rutil
 // GAME STATE
 // ---------------------------------------------------------------------------
 let G={ phase:'title', S:null, damp:[], slots:{}, sel:null, flag:null,
-        speed:1, acc:0, raf:0, results:[], unIdx:0, seed:0 };
+        speed:1, acc:0, raf:0, results:[], unIdx:0, seed:0,
+        offers:[], taken:null, fired:[], verdict:null, bill:null };
 
 function show(id){ document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on')); $('#'+id).classList.add('on'); }
 let toastT=0;
@@ -71,10 +80,30 @@ function startFiring(){
     d.appendChild(el('div','d lc',eff)); C.appendChild(d);
   }
   const sum=G.S.cond.kiln[2]+G.S.cond.draw[2]+G.S.cond.fuel[2];
+  drawBoard();
+  $('#moneyline').textContent = `${SAVE.money<0?'−$':'$'}${Math.abs(SAVE.money)} in the tin`;
   $('#condread').textContent = sum>0.15 ? "it'll want less gas than you think tonight."
     : sum<-0.15 ? "this is a slow night. start earlier than feels right, and don't chase it with the gas."
     : "an ordinary night. nothing is doing you any favours and nothing is against you.";
   show('scr-cond');
+}
+
+// The board. Deterministic per firing, so reloading cannot reroll an easier brief.
+function drawBoard(){
+  G.offers=offerCommissions(SAVE.firings+1, G.seed, SAVE.comDone); G.taken=null;
+  const B=$('#board'); B.innerHTML='';
+  for(const c of G.offers){
+    const cl=CLIENTS[c.client];
+    const d=el('div','brief');
+    d.innerHTML=`<div class="bt lc">${c.title}</div>
+      <div class="bc lc">${cl.n} · ${cl.of}</div>
+      <div class="bb lc">${c.brief}</div>
+      <div class="bf lc">$${c.fee}</div>
+      <div class="bx lc">${cl.taste}</div>`;
+    d.onclick=()=>{ A.click(); G.taken = G.taken===c.id ? null : c.id;
+      [...B.children].forEach((x,i)=>x.classList.toggle('on', G.offers[i].id===G.taken)); };
+    B.appendChild(d);
+  }
 }
 
 function buildDampRoom(rng){
@@ -85,12 +114,18 @@ function buildDampRoom(rng){
     out.push({ id:'y'+(n++), form:forms[Math.floor(rng()*forms.length)],
                glaze:YOURS[Math.floor(rng()*YOURS.length)], owner:'you', mine:true });
   }
-  // six from the members
-  const pool=[...MEMBERS].sort(()=>rng()-0.5).slice(0,6);
+  // ⚠️ §12.1 — THIS IS PILLAR 4 AND IT IS THE CORE LOOP. A member whose work keeps
+  // coming out badly stops leaving it for you, and the only way you find out is that
+  // the damp room is emptier. There is no reputation bar. Nobody says "that was not
+  // very kind." Do not add a number to this.
+  const willing=MEMBERS.filter(m=>(SAVE.members[m.id]?.mood||0) > -3);
+  const pool=[...willing].sort(()=>rng()-0.5).slice(0,6);
   for(const m of pool){
     out.push({ id:'m'+(n++), form:m.makes[Math.floor(rng()*m.makes.length)],
                glaze: rng()<0.72 ? m.likes : YOURS[Math.floor(rng()*YOURS.length)],
-               owner:m.id, mine:false });
+               owner:m.id, mine:false,
+               // the potter's hand. desmond's pieces crawl and run and it is legible.
+               thick: m.id==='desmond' ? MOOD.thickHand : 0 });
   }
   return out;
 }
@@ -104,12 +139,16 @@ function drawLoad(){
     const placed=Object.values(G.slots).some(x=>x&&x.id===p.id);
     const who = p.mine?'yours':(MEMBERS.find(m=>m.id===p.owner)||{}).n;
     const d=el('div','piece'+(placed?' placed':'')+(G.sel===p.id?' sel':''));
-    d.innerHTML=`<div class="n lc">${FORMS[p.form].name}</div>
+    d.innerHTML=`<div class="n lc">${FORMS[p.form].name}${p.mine?" ▾":""}</div>
       <div class="g lc">${GLAZES[p.glaze].name}${p.mine?' ▾':''}</div>
       <div class="o lc">${who}</div>`;
     d.onclick=e=>{ A.click();
       if(p.mine && e.target.classList.contains('g')){
         p.glaze=YOURS[(YOURS.indexOf(p.glaze)+1)%YOURS.length]; drawLoad(); return; }
+      // you MADE these three. a brief that asks for wide bowls is unfillable if the
+      // game picks your forms for you, so the form cycles too.
+      if(p.mine && e.target.classList.contains('n')){
+        const F=Object.keys(FORMS); p.form=F[(F.indexOf(p.form)+1)%F.length]; drawLoad(); return; }
       G.sel = G.sel===p.id?null:p.id; drawLoad(); };
     D.appendChild(d);
   }
@@ -389,7 +428,7 @@ function toUnload(){
   const order=Object.keys(POSITIONS);
   raw.sort((a,b)=>order.indexOf(a.pos)-order.indexOf(b.pos));
   if(G.flag){ const i=raw.findIndex(p=>p.pos===G.flag); if(i>=0) raw.push(raw.splice(i,1)[0]); }
-  G.results=raw; G.unIdx=-1;
+  G.results=raw; G.unIdx=-1; G.fired=[];
   if(!three) initThree();
   show('scr-unload'); nextPot();
 }
@@ -406,7 +445,7 @@ function nextPot(){
       o.material.dispose(); } });
   three.holder.clear();
   const mesh=makePot(p.seed,{ form:p.form, glaze:p.glaze, pos:p.pos,
-                              heat:p.heat, red:p.red, cool:p.cool });
+                              heat:p.heat, red:p.red, cool:p.cool, thick:p.thick||0 });
   three.holder.add(mesh);
   const hg=mesh.userData.height; mesh.position.y=-hg/2;
   const halfTan=Math.tan(26*Math.PI/360), maxR=mesh.userData.maxR;
@@ -417,6 +456,11 @@ function nextPot(){
 
   const pot=mesh.userData.pot;
   const dunted=pot.events.some(e=>e.k==='dunt');
+  // the verdict judges exactly the objects that came out of the door — same seed,
+  // same opts, so this is the pot on screen and not a second roll of it.
+  G.fired.push({ mine:!!p.mine, owner:p.owner||'you', form:p.form, glaze:p.glaze,
+                 effGlaze:pot.effGlaze, copperFlip:pot.copperFlip, pos:p.pos,
+                 events:pot.events, sound:!dunted, name:mesh.userData.name });
   A.potRing(!dunted);
   const owner = p.mine?'yours':(MEMBERS.find(m=>m.id===p.owner)||{n:'the studio'}).n;
   const [form,glaze,...rest]=mesh.userData.name.split(' · ');
@@ -453,7 +497,129 @@ function finish(){
   // the collectible: a firing where nothing broke. (§20)
   const perfect=G.results.every((p,i)=>SAVE.pots[SAVE.pots.length-G.results.length+i].sound);
   if(perfect){ SAVE.kilnGod=true; toast('nothing broke. the kiln god stays on the arch.'); A.chime(true); }
-  save(); drawShelf(); show('scr-shelf');
+  drawVerdict(); save(); show('scr-verdict');
+}
+
+// ---------------------------------------------------------------------------
+// 6. THE VERDICT — §4.4, §4.5, §12. In this order, and the order is the point:
+//    the pots first (already seen, unscored, kept), THEN the brief, THEN the
+//    counterfactual with its lever, THEN what the night cost.
+// ⚠️ Nothing on this screen scores an object. It scores a CONTRACT. (§19.6)
+// ---------------------------------------------------------------------------
+function drawVerdict(){
+  const com=G.offers.find(c=>c.id===G.taken)||null;
+  const mine=G.fired.filter(p=>p.mine).length;
+  const members=G.fired.filter(p=>!p.mine).length;
+  const V=com?judge(com,G.fired,G.S):null;
+  const bill=settle(G.S,{commission:com,verdict:V,mineCount:mine,memberCount:members});
+  G.verdict=V; G.bill=bill;
+
+  SAVE.money+=bill.net;
+  if(V&&V.passed) SAVE.comDone[com.id]=1;
+  SAVE.ledger.push({ firing:SAVE.firings, net:bill.net, com:com?com.id:null, met:!!(V&&V.passed) });
+  applyMoods();
+
+  $('#vsub').textContent=`firing ${SAVE.firings} · ${G.fired.length} pieces out`;
+
+  // --- the brief, clause by clause ---
+  const C=$('#v-com'); C.innerHTML='';
+  if(!com){
+    C.innerHTML='<h3>the brief</h3><div class="vsay lc">you took no work this firing. the pots are yours and nobody is waiting on them.</div>';
+  } else {
+    const cl=CLIENTS[com.client];
+    C.innerHTML=`<h3>${cl.n} — ${com.title}</h3>`;
+    for(const c of V.clauses){
+      const d=el('div','clause '+(c.pass?'y':'n'));
+      d.innerHTML=`<div class="mk">${c.pass?'✓':'✕'}</div><div><div class="ct lc">${c.text}</div>${c.why?`<div class="cw lc">${c.why}</div>`:''}</div>`;
+      C.appendChild(d);
+    }
+    const say=el('div','vsay lc');
+    say.style.marginTop='12px';
+    // ⚠️ attributed to a PERSON with taste, never to a universal standard (§4.4)
+    say.textContent = V.passed
+      ? `${cl.n} took them without comment, which from ${cl.n} is the review.`
+      : `${cl.n} is not taking them as the brief. the pots are still yours — they go on the shelf like everything else.`;
+    C.appendChild(say);
+  }
+
+  // --- the counterfactual, with its lever ---
+  const F=$('#v-cf'); F.innerHTML='<h3>the margin</h3>';
+  const cfs=counterfactuals(G.S);
+  if(!cfs.length) F.innerHTML+='<div class="vsay lc">nothing came down to a margin tonight. the firing did what you told it to.</div>';
+  for(const c of cfs){
+    const d=el('div','cf');
+    d.innerHTML=`<div class="cfw lc">${c.what}</div><div class="cfm lc">${c.margin}</div><div class="cfg lc">${c.magnitude}</div>`;
+    F.appendChild(d);
+  }
+
+  // --- what the night cost. small, metered, never the score (§12.3) ---
+  const L=$('#v-led'); L.innerHTML='<h3>the tin</h3>';
+  const row=(k,v,cls)=>{ const d=el('div','led'+(cls?' '+cls:'')); d.innerHTML=`<span>${k}</span><b>${v}</b>`; L.appendChild(d); };
+  // ⚠️ a bare '$'+n prints "$-52" when the tin is empty. Sign goes OUTSIDE the symbol.
+  const money=v=>(v<0?'−$':'$')+Math.abs(v);
+  if(com) row(`${CLIENTS[com.client].n} — ${bill.feeNote}`, (bill.fee?'+':'')+money(bill.fee));
+  row(`firing fees · ${members} pieces`, '+'+money(bill.fees));
+  row(`gas · ${Math.round(G.S.fuel).toLocaleString()} gas-minutes`, '−'+money(bill.gas));
+  row(`clay · ${mine} of your own`, '−'+money(bill.clay));
+  row('the night', (bill.net<0?'':'+')+money(bill.net), 'tot'+(bill.net<0?' neg':''));
+  row('in the tin', money(SAVE.money), SAVE.money<0?'neg':'');
+
+  // --- the studio. no bar, no number, just who said what. ---
+  const T=$('#v-studio'); T.innerHTML='<h3>the studio</h3>';
+  const lines=studioLines();
+  if(!lines.length) T.innerHTML+='<div class="vsay lc">nobody said anything. they will have looked, though.</div>';
+  for(const t of lines){ const d=el('div','vsay lc'); d.style.marginBottom='9px'; d.textContent=t; T.appendChild(d); }
+}
+
+// §12.1 — the members remember. Mood is never displayed; it only changes what turns
+// up in the damp room, and what somebody says to you afterwards.
+function applyMoods(){
+  for(const p of G.fired){
+    if(p.mine) continue;
+    const m=SAVE.members[p.owner]||(SAVE.members[p.owner]={mood:0,fired:0,lost:0});
+    m.fired++;
+    const ruined=!p.sound;
+    const rough=p.events.some(e=>e.k==='crawl'||e.k==='blister');
+    if(ruined){ m.lost++; m.mood+=MOOD.bad; }
+    else if(rough) m.mood+=MOOD.bad;
+    else m.mood+=MOOD.good;
+    m.mood=Math.max(MOOD.min,Math.min(MOOD.max,m.mood));
+  }
+}
+
+// ⚠️ ONE sentence per outcome read as a form letter the moment three people's work
+// broke in the same firing — the identical line, three times, one under the other.
+// Variants are chosen by a stable hash of the member, so a given person always reacts
+// the same way and it reads as character instead of as a shuffle.
+// Warm, flat, never moralising: nobody ever says "that was not very kind." (§12.1)
+const BROKE_LINES=[
+  n=>`${n} picked up the pieces and said it was fine, it was an experiment anyway.`,
+  n=>`${n} turned the cracked one over twice, put it in their bag, and said nothing.`,
+  n=>`${n} said not to worry about it, in the voice people use when it is worth worrying about.`,
+  n=>`${n} asked which shelf it had been on. you told them. they nodded and let it go.`,
+];
+const WARM_LINES=[
+  n=>`${n} left something else in the damp room on the way out.`,
+  n=>`${n} said the good one was the best thing out of that kiln in a year, and meant it.`,
+  n=>`${n} has started asking when the next firing is before you have finished this one.`,
+];
+const COLD_LINES=[
+  n=>`${n} took what was left and did not say when they would be back.`,
+  n=>`${n} has stopped leaving the good pieces on your shelf. only the ones they can afford to lose.`,
+];
+const pickLine=(arr,id)=>{ let h=0; for(let i=0;i<id.length;i++) h=(h*31+id.charCodeAt(i))>>>0; return arr[h%arr.length]; };
+
+function studioLines(){
+  const out=[];
+  for(const mem of MEMBERS){
+    const m=SAVE.members[mem.id]; if(!m||!m.fired) continue;
+    const theirs=G.fired.filter(p=>p.owner===mem.id);
+    if(!theirs.length) continue;
+    if(theirs.some(p=>!p.sound)) out.push(pickLine(BROKE_LINES,mem.id)(mem.n));
+    else if(m.mood>=3)           out.push(pickLine(WARM_LINES,mem.id)(mem.n));
+    else if(m.mood<=-3)          out.push(pickLine(COLD_LINES,mem.id)(mem.n));
+  }
+  return out.slice(0,4);
 }
 
 // ---------------------------------------------------------------------------
@@ -487,6 +653,7 @@ $('#b-shutdown').onclick=()=>{ setControl(G.S,'gas',0); setControl(G.S,'damper',
 $('#b-wait').onclick=()=>{ for(let i=0;i<220;i++) step(G.S,3); paintCool(); };
 $('#b-open').onclick=toUnload;
 $('#b-next').onclick=()=>{ A.click(); nextPot(); };
+$('#b-toshelf').onclick=()=>{ A.click(); drawShelf(); show('scr-shelf'); };
 $('#b-again').onclick=()=>{ cancelAnimationFrame(G.raf); startFiring(); };
 setInterval(()=>{ if($('#scr-cool').classList.contains('on')){ for(let i=0;i<3;i++) step(G.S,3); paintCool(); } },80);
 addEventListener('keydown',e=>{ if(e.key==='m'){ SAVE.settings.mute=!SAVE.settings.mute; A.setMute(SAVE.settings.mute); save(); toast(SAVE.settings.mute?'muted':'sound on'); }});
@@ -494,6 +661,7 @@ A.setMute(SAVE.settings.mute);
 
 // debug object from day one (§24.10)
 window.__kiln={ G, SAVE, sim:{newFiring,step,setControl,harvest,coneDown}, makePot,
+  verdict:{judge,counterfactuals,settle,offerCommissions},
   wipe(){ localStorage.removeItem(KEY); location.reload(); },
   skip(){ while(G.S.phase==='firing') step(G.S); } };
-console.log('[cone 10] ready · window.__kiln');
+console.log('[the kiln] ready · window.__kiln');

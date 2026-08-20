@@ -29,6 +29,7 @@ export function newFiring(seed, load=[]){
   const S={
     seed, rng, load, cond,
     t:0, temp:FIRE.ambient + (cond.kiln[0]==='warm'?190:0), hw:0, rate:0, atm:0, ratio:1,
+    fuel:0, hwRate:0, peakHwRate:0, redHeld:0,
     set:{gas:0,air:4,damper:10}, eff:{gas:0,air:4,damper:10},
     phase:'firing', log:[], touches:0, attended:0,
     win:{ i:0, openAt:null, cur:null, score:{} },
@@ -76,6 +77,7 @@ export function step(S, dt=FIRE.tick){
   // ---- combustion ----
   const fuelCap = F.gasMax * (1 + S.cond.fuel[2]);
   const gas  = Math.min(S.eff.gas, fuelCap);
+  S.fuel += gas*dt;                       // gas-minutes burned. the bill is metered, not guessed.
   const need = gas*F.stoich;
   const air  = S.eff.air*F.airPerNotch + S.eff.damper*F.airPerDamper*(1+S.cond.draw[2]);
   const ratio= need>0.001 ? air/need : 4;
@@ -102,6 +104,8 @@ export function step(S, dt=FIRE.tick){
 
   // ---- heat work, global and per position ----
   const hwRate = S.temp>1200 ? Math.exp((S.temp-F.hwT0)/F.hwA) : 0;
+  S.hwRate = hwRate; if(hwRate>S.peakHwRate) S.peakHwRate = hwRate;
+  if(S.atm>0.30) S.redHeld += dt;         // total minutes actually held in reduction
   const prevHW=S.hw; S.hw += hwRate*dt/60;
   // circulation: air and damper both stir the kiln, which flattens the spread
   const stir = clamp((S.eff.air/F.airMax)*0.6 + (S.eff.damper/F.damperMax)*0.4, 0, 1);
