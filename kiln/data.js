@@ -131,14 +131,22 @@ export const FIRE = {
 
   // the eight demand windows (§6.1). `at` is the trigger; `hold` is sim minutes.
   windows: [
-    { id:'candle',   name:'candle',            at:{t:0},              hold:120, want:{gas:[1,3],  damper:[6,10]}, miss:'ware went in damp — blowouts' },
-    { id:'climb',    name:'the climb',         at:{t:120},            hold:150, want:{rate:[190,430]},            miss:'climbed too hard through quartz inversion' },
-    { id:'bodyred',  name:'BODY REDUCTION',    at:{cone:'012'},       hold:30,  want:{atm:[0.35,0.85]},           miss:'no body reduction' },
-    { id:'reox',     name:'reoxidise & climb', at:{cone:'08'},        hold:90,  want:{atm:[-1,0.12]},             miss:'stayed rich — carbon coring' },
-    { id:'glazered', name:'glaze reduction',   at:{cone:'6'},         hold:120, want:{atm:[0.30,0.95]},           miss:'glazes never reduced' },
-    { id:'approach', name:'the approach',      at:{cone:'9'},         hold:25,  want:{atm:[-0.1,0.35]},           miss:'stalled short of cone 10' },
-    { id:'soak',     name:'the soak',          at:{cone:'10'},        hold:25,  want:{rate:[-18,18]},             miss:'no soak — surfaces stayed dry' },
-    { id:'shutdown', name:'clean-up & shut',   at:{cone:'10',off:25}, hold:20,  want:{atm:[-1,0.10]},             miss:'shut down dirty' },
+    { id:'candle',   name:'candle',            at:{t:0},              hold:120, want:{gas:[1,3],  damper:[6,10]}, miss:'ware went in damp — blowouts',
+      plain:'low and open. you are drying the pots, and if you rush this the water in them turns to steam and they burst.' },
+    { id:'climb',    name:'the climb',         at:{t:120},            hold:150, want:{rate:[190,430]},            miss:'climbed too hard through quartz inversion',
+      plain:'now bring the heat up steadily. gas up, damper still fairly open. too fast here and pots crack hours later.' },
+    { id:'bodyred',  name:'BODY REDUCTION',    at:{cone:'012'},       hold:30,  want:{atm:[0.35,0.85]},           miss:'no body reduction',
+      plain:'⚠ CLOSE THE DAMPER. starve the fire of air so it pulls oxygen out of the clay instead. this is the one you cannot do late.' },
+    { id:'reox',     name:'reoxidise & climb', at:{cone:'08'},        hold:90,  want:{atm:[-1,0.12]},             miss:'stayed rich — carbon coring',
+      plain:'open it back up and burn clean for a while. keep climbing. staying rich this whole time just makes soot.' },
+    { id:'glazered', name:'glaze reduction',   at:{cone:'6'},         hold:120, want:{atm:[0.30,0.95]},           miss:'glazes never reduced',
+      plain:'back into reduction — this is the long one, and it is what makes copper go red and celadon go green.' },
+    { id:'approach', name:'the approach',      at:{cone:'9'},         hold:25,  want:{atm:[-0.1,0.35]},           miss:'stalled short of cone 10',
+      plain:'ease back toward neutral and push for cone 10. if it stalls here, try LESS gas — that is not a typo.' },
+    { id:'soak',     name:'the soak',          at:{cone:'10'},        hold:25,  want:{rate:[-18,18]},             miss:'no soak — surfaces stayed dry',
+      plain:'hold it steady. stop climbing. time at heat is what actually melts a glaze, and this is where surfaces are made.' },
+    { id:'shutdown', name:'clean-up & shut',   at:{cone:'10',off:25}, hold:20,  want:{atm:[-1,0.10]},             miss:'shut down dirty',
+      plain:'a short clean burn to settle the glazes, then shut the gas off and close the damper tight.' },
   ],
   // ⚠️ THE ONE-WAY DOOR (§6.2). Real, sourced, irreversible.
   // "If you begin reducing later than 06, you may have missed reduction and will not get any."

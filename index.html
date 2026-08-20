@@ -3,11 +3,19 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>THE KILN — a firing</title>
 <style>
+/* ⚠️ MEASURED, NOT EYEBALLED. The old palette put --dim2 at 2.95:1 against the
+   background and used it 24 times, mostly at 10.5px — it FAILED WCAG for body
+   text, and it was the most common text colour in the game. Borders sat at
+   1.34:1, so the structure read as a flat void. That is what "not very inviting"
+   was. (Kyle, 2026-08-19)
+   Every text colour below now clears 4.5:1 on both backgrounds. The room is
+   still dim and still warm and the fire is still the brightest thing on
+   screen (§15) — it is just legible now. If you change one, re-measure it. */
 :root{
-  --ink:#0b0a09; --ink2:#131110; --line:#2b2724; --line2:#3d3833;
-  --pale:#d8cfc0; --dim:#8b8377; --dim2:#655e55;
-  --fire:#ff9a3c; --hot:#ffd9a0; --cold:#8fb0d4; --bad:#c9603f; --good:#8fae74;
-  --paper:#e8ddc6;
+  --ink:#100c0a; --ink2:#1b1512; --line:#423931; --line2:#5c4e3f;
+  --pale:#e4dacb; --dim:#b6a893; --dim2:#948674;
+  --fire:#ffa64d; --hot:#ffdcaa; --cold:#9cc0e4; --bad:#e07a55; --good:#a3c489;
+  --paper:#f2e8d4; --ember:#2a1a10;
 }
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;background:var(--ink);color:var(--pale);
@@ -26,18 +34,42 @@ h1,h2,h3{font-weight:500;margin:0;letter-spacing:.06em}
 .scr.on{display:flex}
 .hd{display:flex;align-items:baseline;gap:14px;margin-bottom:4px}
 .hd h2{font-size:17px;color:var(--paper)}
-.hd .sub{color:var(--dim2);font-size:12px}
+.hd .sub{color:var(--dim);font-size:12.5px}
 .mid{flex:1;display:flex;min-height:0}
 .foot{display:flex;gap:10px;align-items:center;padding-top:14px;border-top:1px solid var(--line);margin-top:14px}
 .foot .sp{flex:1}
 .card{border:1px solid var(--line);padding:14px 16px;background:var(--ink2)}
-.k{color:var(--dim2);font-size:11px;letter-spacing:.09em;text-transform:uppercase}
+.k{color:var(--dim);font-size:11.5px;letter-spacing:.09em;text-transform:uppercase}
 
 /* ---------- title ---------- */
-#scr-title{align-items:center;justify-content:center;text-align:center}
-#scr-title h1{font-size:40px;letter-spacing:.34em;color:var(--paper)}
-#scr-title .tag{color:var(--dim);margin:16px 0 30px;max-width:44ch;line-height:1.7}
-#scr-title .cred{margin-top:38px;color:var(--dim2);font-size:11px;letter-spacing:.12em}
+/* THE FRONT DOOR. It used to be a title, one cryptic line and four buttons, which
+   told a new player nothing about what they were about to do. (Kyle, 2026-08-19) */
+#scr-title{align-items:center;justify-content:center;text-align:center;padding:24px}
+#scr-title .inner{max-width:880px;width:100%}
+#scr-title h1{font-size:clamp(30px,6vw,46px);letter-spacing:.34em;color:var(--paper);
+  text-shadow:0 0 34px rgba(255,166,77,.22)}
+#scr-title .kicker{color:var(--fire);font-size:12px;letter-spacing:.22em;margin-top:12px;text-transform:uppercase}
+#scr-title .tag{color:var(--pale);margin:20px auto 4px;max-width:56ch;line-height:1.75;font-size:14.5px}
+#scr-title .tag b{color:var(--hot);font-weight:500}
+#scr-title .cred{margin-top:26px;color:var(--dim2);font-size:11.5px;letter-spacing:.12em}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:26px 0 24px;text-align:left}
+.step{border:1px solid var(--line2);background:var(--ink2);padding:15px 16px;position:relative;overflow:hidden}
+.step:before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--fire);opacity:.55}
+.step .sh{color:var(--fire);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase}
+.step .sb{color:var(--pale);font-size:13px;line-height:1.65;margin-top:9px}
+.menu{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+.resume{border:1px solid var(--line);background:var(--ember);padding:11px 16px;margin-bottom:20px;
+  color:var(--hot);font-size:12.5px;letter-spacing:.04em;display:inline-block}
+@media(max-width:720px){ .steps{grid-template-columns:1fr} }
+/* short laptop windows: the front door must not need scrolling to reach the button */
+@media(max-height:780px){
+  #scr-title h1{font-size:30px}
+  #scr-title .tag{margin:14px auto 2px;font-size:13.5px;line-height:1.6}
+  .steps{margin:18px 0 16px;gap:11px}
+  .step{padding:12px 13px}
+  .step .sb{font-size:12.5px;line-height:1.55;margin-top:7px}
+  #scr-title .cred{margin-top:14px}
+}
 
 /* ---------- conditions ---------- */
 .conds{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:18px 0}
@@ -61,7 +93,7 @@ h1,h2,h3{font-weight:500;margin:0;letter-spacing:.06em}
 .slot{border:1px dashed var(--line2);min-height:104px;padding:9px;cursor:pointer;transition:.12s;position:relative}
 .slot:hover{border-color:var(--pale);border-style:solid}
 .slot.full{border-style:solid;border-color:var(--line2);background:var(--ink2)}
-.slot .pn{font-size:10px;color:var(--dim2);letter-spacing:.07em;text-transform:uppercase}
+.slot .pn{font-size:11px;color:var(--dim);letter-spacing:.07em;text-transform:uppercase}
 .slot .it{margin-top:8px;color:var(--paper);font-size:12.5px;line-height:1.35}
 .slot .ig{color:var(--fire);font-size:11px}
 /* THE REVEAL (M3) — the crack, and the open. §9.2 beats 2 and 3 */
@@ -91,6 +123,9 @@ h1,h2,h3{font-weight:500;margin:0;letter-spacing:.06em}
 .oslot.flag .opn{color:var(--fire)}
 .openside{width:330px;display:flex;flex-direction:column;gap:12px}
 /* THE NOTEBOOK (M2) — logging a reading, and the book itself. §10 */
+.wplain{color:var(--pale);font-size:12.5px;line-height:1.6;margin-top:9px;
+  padding-top:9px;border-top:1px solid var(--line)}
+.stepdot{color:var(--dim2);font-size:11px;letter-spacing:.1em;margin-left:auto}
 .readbox{border:1px solid var(--line);background:var(--ink2);padding:11px 13px;margin-top:10px}
 .readbox .rh{display:flex;align-items:center;gap:10px}
 .readbox .rq{color:var(--dim);font-size:11.5px;flex:1}
@@ -145,7 +180,7 @@ h1,h2,h3{font-weight:500;margin:0;letter-spacing:.06em}
 .brief .bc{color:var(--fire);font-size:11px;margin-top:5px}
 .brief .bb{color:var(--dim);font-size:11.5px;margin-top:9px;line-height:1.5;flex:1}
 .brief .bf{color:var(--hot);font-size:11px;margin-top:10px;letter-spacing:.05em}
-.brief .bx{color:var(--dim2);font-size:10.5px;font-style:italic;margin-top:6px}
+.brief .bx{color:var(--dim2);font-size:11.5px;font-style:italic;margin-top:6px;line-height:1.45}
 .vwrap{display:grid;grid-template-columns:1.15fr 1fr;gap:26px;flex:1;min-height:0;overflow:auto}
 .vcol{display:flex;flex-direction:column;gap:14px;min-width:0}
 .vcard{border:1px solid var(--line);background:var(--ink2);padding:16px}
@@ -166,7 +201,7 @@ h1,h2,h3{font-weight:500;margin:0;letter-spacing:.06em}
 .led.tot b{color:var(--hot)}
 .led.neg b{color:var(--bad)}
 .vsay{color:var(--dim);font-size:12.5px;line-height:1.6;font-style:italic}
-.slot .hint{color:var(--dim2);font-size:10.5px;margin-top:5px;font-style:italic}
+.slot .hint{color:var(--dim2);font-size:11.5px;margin-top:5px;font-style:italic;line-height:1.45}
 .slot.flag::after{content:'★';position:absolute;top:6px;right:8px;color:var(--fire)}
 
 /* ---------- fire ---------- */
@@ -227,7 +262,7 @@ canvas.cones{width:100%;height:150px;border:1px solid var(--line);background:#0f
 .spot canvas{width:100%;height:150px;display:block;background:#0d0b0a}
 .spot .sn{color:var(--paper);font-size:12.5px;line-height:1.35;padding:10px 11px 0}
 .spot .se{color:var(--fire);font-size:11px;padding:4px 11px 0;line-height:1.4}
-.spot .sp2{color:var(--dim2);font-size:10.5px;padding:7px 11px 0;line-height:1.5}
+.spot .sp2{color:var(--dim2);font-size:11px;padding:7px 11px 0;line-height:1.55}
 .spot.broken{border-color:#4a2a22}
 .spot.broken .sn{color:#c9a08c}
 .unside{width:330px;display:flex;flex-direction:column;gap:12px}
@@ -252,16 +287,41 @@ canvas.cones{width:100%;height:150px;border:1px solid var(--line);background:#0f
 <div id="app">
 
   <section id="scr-title" class="scr on">
+   <div class="inner">
     <h1>THE KILN</h1>
-    <div class="tag lc">you can't see in. you can't undo.<br>and it isn't only your work in there.</div>
-    <div style="display:flex;gap:12px">
+    <div class="kicker lc">a gas reduction firing · one night</div>
+    <div class="tag lc">you fire the kiln at a small community pottery. nine people share the
+      studio, and firing is <b>everybody's work at once</b> — yours and theirs. you can't see
+      in. you can't undo. and at the end you find out what the fire made of it at the same
+      time as everyone else.</div>
+    <div class="steps">
+      <div class="step">
+        <div class="sh lc">1 · load it</div>
+        <div class="sb lc">nine named shelves, each with its own heat and atmosphere.
+          <b>where you put a piece decides what it becomes.</b> then you brick up the door.</div>
+      </div>
+      <div class="step">
+        <div class="sh lc">2 · fire it blind</div>
+        <div class="sb lc">twelve hours on three knobs — gas, air, damper. no window.
+          you steer by a spyhole, a stack of bending cones, and what the kiln sounds like.</div>
+      </div>
+      <div class="step">
+        <div class="sh lc">3 · open it</div>
+        <div class="sb lc">it cools for longer than it fired, and you can't open it hot.
+          then you take them out one at a time and find out what you did.</div>
+      </div>
+    </div>
+    <div id="resume"></div>
+    <div class="menu">
       <button class="prime lc" id="b-new">light the kiln</button>
+      <button class="lc" id="b-primer">how a firing goes</button>
       <button class="lc" id="b-shelf0">the shelf</button>
       <button class="lc" id="b-notebook">the notebook</button>
-      <button class="lc" id="b-primer">how a firing goes</button>
     </div>
-    <div class="cred lc" style="margin-top:14px;opacity:.75">first time? read that middle one. press <b>?</b> for it at any point.</div>
+    <div class="cred lc" style="margin-top:16px;opacity:.8">never fired one before? read
+      <b>how a firing goes</b> first — it is two minutes, and it is the whole game. press <b>?</b> any time.</div>
     <div class="cred lc">a DIRTY BOY DEVS game</div>
+   </div>
   </section>
 
   <section id="scr-cond" class="scr">
@@ -316,6 +376,8 @@ canvas.cones{width:100%;height:150px;border:1px solid var(--line);background:#0f
         <div class="window idle" id="win">
           <div class="w1 lc" id="winname">not started</div>
           <div class="w2 lc" id="winwant"></div>
+          <!-- the same demand, said the way a person would say it -->
+          <div class="wplain lc" id="winplain"></div>
           <div class="bar"><i id="winbar" style="width:0"></i></div>
         </div>
         <div class="readbox" id="readbox">

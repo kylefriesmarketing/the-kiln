@@ -379,14 +379,16 @@ function paintFire(){
   paintCtrls(); drawSpy(); drawCones();
   const w=S.win.cur ? FIRE.windows.find(x=>x.id===S.win.cur) : null;
   const box=$('#win');
-  if(w){ box.className='window'; $('#winname').textContent=w.name;
+  if(w){ box.className='window'; $('#winname').textContent=`${w.name}   (${S.win.i+1} of ${FIRE.windows.length})`;
     $('#winwant').textContent=wantText(w);
+    $('#winplain').textContent=w.plain||'';
     $('#winbar').style.width=clamp((S.t-S.win.openAt)/w.hold*100,0,100)+'%';
   } else {
     box.className='window idle';
     const nx=FIRE.windows[S.win.i];
     $('#winname').textContent = nx? 'next: '+nx.name : 'the schedule is done';
     $('#winwant').textContent = nx? telegraph(nx) : 'shut the gas and close the damper.';
+    $('#winplain').textContent = nx? 'coming up — '+(nx.plain||'') : 'that is the whole schedule. shut it down when you are ready.';
     $('#winbar').style.width='0';
   }
   A.burners(S.eff.gas/FIRE.gasMax, S.atm);
@@ -397,7 +399,11 @@ function wantText(w){
   if(w.want.gas) p.push(`gas ${w.want.gas[0]}–${w.want.gas[1]}`);
   if(w.want.damper) p.push(`damper ${w.want.damper[0]}–${w.want.damper[1]}`);
   if(w.want.atm) p.push(w.want.atm[0]>0.2?'reducing — long orange flame':'clean burn — short blue flame');
-  if(w.want.rate) p.push(`climb ${w.want.rate[0]}–${w.want.rate[1]}°/hr`);
+  // a range that straddles zero is not a climb rate, it is a HOLD — and printing
+  // "climb -18–18°/hr" at the most important moment of the firing helps nobody.
+  if(w.want.rate) p.push(w.want.rate[0] < 0
+    ? 'hold steady — stop climbing'
+    : `climb ${w.want.rate[0]}–${w.want.rate[1]}°/hr`);
   return p.join(' · ');
 }
 function telegraph(w){
@@ -997,6 +1003,22 @@ window.__kiln={ G, SAVE, sim:{newFiring,step,setControl,harvest,coneDown}, makeP
   teach, showPrimer, hidePrimer, retaught(){ SAVE.taught={}; save(); },
   notebook:{ showNotebook, logReading, truthOf, refirable, buildReadRows },
   reveal:{ toOpen, toUnload, crackDoor, glowOf },
+  // the fire screen repaints from rAF only, which a hidden pane suspends — expose
+  // the painter so a headless check can prove what the player would actually see.
+  paint:{ paintFire, paintCool, paintCrack },
   wipe(){ localStorage.removeItem(KEY); location.reload(); },
   skip(){ while(G.S.phase==='firing') step(G.S); } };
+// The menu should know you have been here. A returning player wants to see that
+// the shelf and the tin carried over, not a cold start. (Kyle, 2026-08-19)
+(function frontDoor(){
+  const r=$('#resume'); if(!r) return;
+  if(!SAVE.firings){ r.innerHTML=''; return; }
+  const bits=[`${SAVE.firings} firing${SAVE.firings===1?'':'s'}`,
+              `${SAVE.pots.length} piece${SAVE.pots.length===1?'':'s'} on the shelf`,
+              `${SAVE.money<0?'−$':'$'}${Math.abs(SAVE.money)} in the tin`];
+  if(SAVE.kilnGod) bits.push('the kiln god is on the arch');
+  r.innerHTML='<div class="resume lc">'+bits.join(' · ')+'</div>';
+  $('#b-new').textContent='fire it again';
+})();
+
 console.log('[the kiln] ready · window.__kiln');

@@ -110,6 +110,23 @@ new work wanted: a second chance costs production, like everything else here.
 | `kiln/audio.js` | WebAudio, zero sound files. |
 | `gate.html` | the render gate — 30 pots, one firing each, for the squint test. |
 
+## The front door, and saying what is going on
+
+The title screen states the game in three steps — load it / fire it blind / open it —
+and a returning player sees their firings, their shelf and their tin before they
+press anything. During the firing each demand window shows its position in the night
+(**3 of 8**), the technical demand, AND the same thing said the way a person would
+say it: *"CLOSE THE DAMPER. starve the fire of air so it pulls oxygen out of the clay
+instead. this is the one you cannot do late."*
+
+> ⚠️ **The palette is measured, not eyeballed.** The original put  at **2.95:1**
+> against the background and used it 24 times, mostly at 10.5px — it failed WCAG for
+> body text and it was the most common text colour in the game; borders sat at 1.34:1,
+> so the structure read as a flat void. Every text colour now clears 4.5:1 on both
+> backgrounds (swept live: 61 elements, 0 failures). The room is still dim, still warm,
+> and the fire is still the brightest thing on screen (§15) — it is just legible.
+> **If you change a colour, re-measure it.**
+
 ## Being taught it
 
 There is no tutorial overlay and no tooltips (§10). Instead **Ruthie tells you one
