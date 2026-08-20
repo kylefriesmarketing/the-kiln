@@ -3,7 +3,7 @@
 // place that touches document, and the only place Math.random is allowed.
 import * as THREE from 'three';
 import { FIRE, FORMS, GLAZES, POSITIONS, EVENT_NAMES, ZONE_NAMES, ECON, MOOD, CLIENTS, GUIDE, PRIMER,
-         INSTRUMENTS, REFIRE } from './data.js';
+         INSTRUMENTS, REFIRE, GLOW, COOLING, OPENING } from './data.js';
 import { judge, counterfactuals, settle, offerCommissions } from './verdict.js';
 import { logReading, truthOf, ensure as nbEnsure, isConfirmed, pagesFor,
          confirmedCount, totalInstruments, refirable } from './notebook.js';
@@ -136,7 +136,9 @@ function startFiring(){
   G.seed = (SAVE.firings*7919 + 1013904223 + (SAVE.pots.length*31)) >>> 0;
   const rng=lcg(G.seed ^ 0xBEEF);
   G.damp=buildDampRoom(rng);
-  G.slots={}; G.sel=null; G.flag=null;
+  G.slots={}; G.sel=null; G.flag=null; G.cracked=false;
+  $('#crackwrap').style.display='none';
+  $('#b-crack').textContent='crack the door'; $('#b-crack').disabled=false;
   G.S=newFiring(G.seed, []);
   $('#firingno').textContent=`firing ${SAVE.firings+1}`;
   const C=$('#conds'); C.innerHTML='';
@@ -493,17 +495,58 @@ function drawCones(){
 // ---------------------------------------------------------------------------
 let coolTick=0;
 function toCool(){ cancelAnimationFrame(G.raf); G.raf=0; show('scr-cool'); teach('cool'); A.doorCrack(); }
+// ---------------------------------------------------------------------------
+// BEAT 1 — THE TICK. §9.2. The kiln cooling, out loud, in the dark, and you can
+// leave whenever you want. The cooling takes longer than the firing did and the
+// game deliberately lets you sit with that: the anticipation IS the reward, and
+// the wait is enforced by a mechanic the player agrees with (dunting), not by a
+// designer teasing them. ⚠️ never add a "skip to results" button (§9.1).
+// ---------------------------------------------------------------------------
+const glowOf = t => GLOW.find(b => t < b.max) || GLOW[GLOW.length-1];
+
 function paintCool(){
   const S=G.S; if(!$('#scr-cool').classList.contains('on')) return;
   $('#cooltemp').textContent=Math.round(S.temp)+'°F';
   const p=clamp(1-(S.temp-FIRE.cool.targetOpenF)/(2300-FIRE.cool.targetOpenF),0,1);
   $('#coolbar').firstElementChild.style.width=(p*100)+'%';
   const safe=S.temp<=FIRE.cool.targetOpenF;
+  // the room, keyed to how far down it has come
+  const room=(COOLING.find(c=>S.temp<c.max)||COOLING[COOLING.length-1]).t;
   $('#coolnote').textContent = safe
-    ? 'cool enough. nothing will crack now.'
-    : `too hot. open it at ${Math.round(S.temp)}° and you will dunt what you made — and it will be your fault, not the kiln's.`;
+    ? 'cool enough. nothing will crack now. ' + room
+    : `${room} open it at ${Math.round(S.temp)}° and you will dunt what you made — and it will be your fault, not the kiln's.`;
   $('#b-open').className='lc'+(safe?' prime':'');
-  if(Math.random()<0.06*(S.temp>500?1:0.3)) A.tick();
+  if(G.cracked) paintCrack();
+  // the ticking spreads out as it cools — sparse, irregular, and it slows down
+  if(Math.random() < (S.temp>1400?0.10:S.temp>700?0.05:0.018)) A.tick();
+}
+
+// ---------------------------------------------------------------------------
+// BEAT 2 — CRACK THE DOOR. One brick out. COLOUR TEMPERATURE ONLY, which is the
+// one bit of information a potter actually reads first. You get no pot, no name,
+// no surface: a sliver of light and what colour it is.
+// ⚠️ this is also the only honest moment for the pyrometer. It lies about heat
+// work all firing long (§6.3) because heat work is not temperature — but on the
+// way down, temperature IS the question, so the number and the colour finally agree.
+// ---------------------------------------------------------------------------
+function crackDoor(){
+  if(!G.cracked){ A.doorCrack(); G.cracked=true; $('#crackwrap').style.display='flex';
+    $('#b-crack').textContent='the brick is out'; $('#b-crack').disabled=true; }
+  paintCrack();
+}
+function paintCrack(){
+  const S=G.S, g=glowOf(S.temp);
+  const peep=$('#peepglow');
+  peep.style.setProperty('--gl', g.col);
+  peep.style.setProperty('--glo', g.lit.toFixed(2));
+  $('#crackname').textContent=g.name;
+  $('#crackline').textContent=g.line;
+  const safe=S.temp<=FIRE.cool.targetOpenF;
+  const v=$('#crackverdict');
+  v.className=safe?'cok lc':'cwarn lc';
+  v.textContent=safe
+    ? 'black, and cool enough. you can take the door off.'
+    : 'there is still light in there. that is your answer.';
 }
 
 // ---------------------------------------------------------------------------
@@ -551,15 +594,49 @@ function initThree(){
      holder.rotation.y+=0.0035; r.render(sc,cam); })();
 }
 
-function toUnload(){
+// ---------------------------------------------------------------------------
+// BEAT 3 — OPEN. Everything at once, still warm, and NONE of it in your hands.
+// You get the shape and the heat and nothing else — no glaze, no events, no
+// names. That is what makes beat 4 worth doing slowly, and it is also true: a
+// kiln at 380° is still glowing enough that you cannot read a surface in it.
+// ---------------------------------------------------------------------------
+function toOpen(){
   openKiln(G.S);
   const raw=harvest(G.S);
-  // physical unload order: shelves come out as you stacked them, and the piece you
-  // flagged comes out LAST. peak-end — the conclusion is what they'll remember.
   const order=Object.keys(POSITIONS);
   raw.sort((a,b)=>order.indexOf(a.pos)-order.indexOf(b.pos));
   if(G.flag){ const i=raw.findIndex(p=>p.pos===G.flag); if(i>=0) raw.push(raw.splice(i,1)[0]); }
   G.results=raw; G.unIdx=-1; G.fired=[];
+
+  const g=glowOf(G.S.temp);
+  $('#openhead').textContent=OPENING.head;
+  $('#opensub').textContent=OPENING.sub;
+  $('#openline').textContent=OPENING.line;
+  const K=$('#openkiln'); K.innerHTML='';
+  for(const [key,P] of Object.entries(POSITIONS)){
+    const it=G.results.find(r=>r.pos===key);
+    const d=el('div','oslot'+(it?'':' empty')+(G.flag===key?' flag':''));
+    d.innerHTML=`<div class="opn">${P.name}${G.flag===key?' ★':''}</div>`;
+    if(it){
+      const glow=el('div','oglow'); glow.style.setProperty('--gl',g.col);
+      glow.style.opacity=(0.22+g.lit*0.5).toFixed(2);
+      d.appendChild(glow);
+      // the FORM and the owner only. never the glaze, never the events. (§9.2 beat 3)
+      d.appendChild(el('div','oform lc',FORMS[it.form].name));
+      d.appendChild(el('div','owho lc',it.mine?'yours':(MEMBERS.find(m=>m.id===it.owner)||{n:'the studio'}).n));
+    }
+    K.appendChild(d);
+  }
+  $('#openflag').textContent = G.flag
+    ? `${FORMS[G.slots[G.flag].form].name}, on the ${POSITIONS[G.flag].name}. it comes out last.`
+    : OPENING.noflag;
+  show('scr-open'); A.doorCrack();
+}
+
+function toUnload(){
+  // beat 3 already opened the kiln and ordered the shelves — the flagged piece is
+  // last and stays last. Re-harvesting here would re-run openKiln and double-log it.
+  G.unIdx=-1; G.fired=[];
   // ⚠️ show() FIRST. initThree() measures the canvas, and a display:none canvas
   // measures 0×0 — that was the black screen. Order here is load-bearing.
   show('scr-unload'); teach('unload');
@@ -814,12 +891,22 @@ $('#b-auto').onclick=autoStack;
 $('#b-brick').onclick=()=>{ A.damper(); beginFire(); };
 $('#b-shutdown').onclick=()=>{ setControl(G.S,'gas',0); setControl(G.S,'damper',0);
   G.S.phase='cooling'; A.burnersOff(); toast('burners off. now it cools.'); };
-$('#b-wait').onclick=()=>{ for(let i=0;i<220;i++) step(G.S,3); paintCool(); };
-$('#b-open').onclick=toUnload;
+// waiting is chunked by the kiln's OWN visible states: each press takes you to the
+// next colour the door would show you, and the last one takes you to safe. That makes
+// the skip a choice about what is worth looking at rather than a button that ends the beat.
+$('#b-wait').onclick=()=>{
+  const S=G.S, start=glowOf(S.temp).key;
+  let guard=0;
+  while(guard++ < 20000 && S.temp > FIRE.cool.targetOpenF && glowOf(S.temp).key===start) step(S,2);
+  A.tick(); paintCool();
+};
+$('#b-crack').onclick=()=>{ A.click(); crackDoor(); };
+$('#b-open').onclick=toOpen;
+$('#b-startunload').onclick=()=>{ A.click(); toUnload(); };
 $('#b-next').onclick=()=>{ A.click(); nextPot(); };
 $('#b-toshelf').onclick=()=>{ A.click(); drawShelf(); show('scr-shelf'); };
 $('#b-again').onclick=()=>{ cancelAnimationFrame(G.raf); startFiring(); };
-setInterval(()=>{ if($('#scr-cool').classList.contains('on')){ for(let i=0;i<3;i++) step(G.S,3); paintCool(); } },80);
+setInterval(()=>{ if($('#scr-cool').classList.contains('on')){ step(G.S, FIRE.cool.paceSimMin); paintCool(); } },80);
 $('#b-read').onclick=()=>{ A.click(); $('#readbox').classList.toggle('open'); };
 $('#b-nbclose').onclick=()=>{ A.click(); hideNotebook(); };
 $('#b-notebook').onclick=()=>{ A.click(); showNotebook(); };
@@ -842,6 +929,7 @@ window.__kiln={ G, SAVE, sim:{newFiring,step,setControl,harvest,coneDown}, makeP
   // under headless verification. These let a test reach the notes directly.
   teach, showPrimer, hidePrimer, retaught(){ SAVE.taught={}; save(); },
   notebook:{ showNotebook, logReading, truthOf, refirable, buildReadRows },
+  reveal:{ toOpen, toUnload, crackDoor, glowOf },
   wipe(){ localStorage.removeItem(KEY); location.reload(); },
   skip(){ while(G.S.phase==='firing') step(G.S); } };
 console.log('[the kiln] ready · window.__kiln');

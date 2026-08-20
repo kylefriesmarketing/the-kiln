@@ -75,6 +75,29 @@ cannot — you cannot un-dunt a pot). They carry their history, so a pot that to
 the third go says so in its provenance. Three at most, and they take up shelves that
 new work wanted: a second chance costs production, like everything else here.
 
+## The reveal — M3, five beats
+
+§9 calls this the most important twenty minutes in the game, so it is staged:
+
+1. **the tick** — the kiln cooling out loud in the dark. A passive cool is a real
+   ~2.5 minutes; **wait** skips forward exactly one colour band at a time, so the
+   skip is a choice about what is worth looking at.
+2. **crack the door** — one brick out, and all you get is **colour temperature**:
+   yellow-white, orange, cherry red, dull red, black. That is the bit potters read
+   first, and on the way *down* the pyrometer is finally answering the right
+   question, so the number and the colour agree for once.
+3. **open** — everything at once, still warm, none of it in your hands. You get the
+   shape and the heat and the shelf it sat on, and **no glaze and no events** —
+   which is what makes beat 4 worth doing slowly.
+4. **unload, one at a time, by hand** — each pot its own beat.
+5. **the flagged piece last** — where you packed your hope decides when you see it.
+
+> ⚠️ The cooling gate is not a designer teasing you; it is dunting prevention, you
+> agree with it, and that is why the wait works (§9.1). **Never add a skip-to-results
+> button.** `FIRE.cool.paceSimMin` is the gate — it was once effectively absent (9
+> sim-minutes per 80ms tick meant a full cool elapsed in *eight seconds*), and
+> `tests/reveal.mjs` now fails if it ever collapses again.
+
 ## Files
 | | |
 |---|---|
@@ -82,6 +105,7 @@ new work wanted: a second chance costs production, like everything else here.
 | `kiln/sim.js` | the firing. DOM-free, Node-importable, seeded, deterministic. |
 | `kiln/pot.js` | the pot generator. One scalar thickness field drives the whole surface. |
 | `kiln/verdict.js` | the brief, the margin, the tin. DOM-free, no rng, never scores an object. |
+| `kiln/notebook.js` | confirm-in-threes, and which pots may go back in. DOM-free, no rng. |
 | `kiln/main.js` | phases, UI, save. The only file that touches the DOM. |
 | `kiln/audio.js` | WebAudio, zero sound files. |
 | `gate.html` | the render gate — 30 pots, one firing each, for the squint test. |
@@ -102,11 +126,18 @@ the title screen.
 node tests/soak.mjs 24      # determinism, the one-way door, kiln geography, distributions
 node tests/verdict.mjs      # the brief, the margin, the tin — asserts the actual sentences
 node tests/notebook.mjs     # confirm-in-threes, the silence, and the refire lever
+node tests/reveal.mjs       # colour temperature, and that the cooling gate is a real wait
 node tests/census.mjs       # event frequency. a DISTRIBUTION to read, not a pass/fail
 node tests/calibrate.mjs    # re-derives the thermodynamic constants and cone thresholds
 node tests/smoke.mjs        # drives the real UI in a browser (needs playwright)
 ```
 A green check is not a balanced game. Read the distributions.
+
+**Known and deliberate:** the bible says the kiln cools for longer than it fired.
+In SIM time it does not (~4.7 cooling hours against a ~21 hour firing) because the
+cooling rate feeds `p.coolRate`, which decides crystal and hare's fur formation —
+retuning it silently would move the surface generator. The REAL-time wait is the
+part the player experiences and that is tuned. Change it with a census, not a hunch.
 
 **Traps worth knowing before you touch this:**
 - `tests/census.mjs` imports `pot.js`, which imports the bare specifier `three`. Node

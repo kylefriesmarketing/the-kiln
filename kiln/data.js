@@ -144,7 +144,15 @@ export const FIRE = {
   // "If you begin reducing later than 06, you may have missed reduction and will not get any."
   reductionDeadlineCone: '06',
 
-  cool: { targetOpenF: 400, ratePerNotch: 0.42, base: 0.55, duntF: 1063, duntF2: 439 },
+  // ⚠️ paceSimMin is THE COOLING GATE (§18: ~5 min, skippable to a floor; §9.1: the
+  // anticipation IS the reward and the wait is enforced by a mechanic the player
+  // agrees with). It was effectively absent: the pump ran 9 sim-minutes per 80ms,
+  // so a 2200°F kiln reached 400°F in EIGHT SECONDS of real time and there was
+  // nothing to sit with at all. At 0.16 a passive cool is ~2.5 real minutes.
+  // Deliberately half the bible's 5, pending Kyle's playtest — a browser session
+  // is not a kiln shed. Raise it toward 5 if the wait reads as too cheap.
+  cool: { targetOpenF: 400, ratePerNotch: 0.42, base: 0.55, duntF: 1063, duntF2: 439,
+          paceSimMin: 0.16 },
 
   // conditions rolled and SHOWN before the door is bricked up (§4.2)
   conditions: {
@@ -469,4 +477,55 @@ export const REFIRE = {
     dry:        'no soak — the surface never had time to melt properly.',
   },
   maxCarried: 3,     // you cannot bank a whole shelf of second chances
+};
+
+// ---------------------------------------------------------------------------
+// THE REVEAL (M3). §9 — "the single most important twenty minutes in the game,
+// and it is engineered beat by beat."
+//
+// The five beats: 1 the tick · 2 crack the door · 3 open · 4 unload by hand ·
+// 5 the flagged piece last. Four and five shipped in Phase 0; one, two and three
+// are here. The unboxing research is unambiguous that the dopamine is in the
+// ANTICIPATION rather than the receipt, and the peak-end rule means the most
+// intense moment and the CONCLUSION disproportionately set the memory.
+//
+// ⚠️ The cooling gate is not a designer teasing the player. It is dunting
+// prevention, the player agrees with it, and that is exactly why the wait works
+// (§9.1). Do not add a "skip to results" button. The waiting IS the mechanic.
+// ---------------------------------------------------------------------------
+
+// BEAT 2 — colour temperature, which is the one bit of information a potter
+// actually reads first, and the only thing a cracked door gives you.
+// Real incandescence: a kiln tells you its temperature by what colour it is,
+// and at the cooling stage temperature is finally the RIGHT question — so the
+// pyrometer, which lies about heat work all firing, is honest here for once.
+export const GLOW = [
+  { max:  850, key:'black',   col:'#241d19', lit:0.00, name:'black',              line:'nothing. no light at all through the peep — you could put your hand near the door.' },
+  { max: 1080, key:'faint',   col:'#5a1608', lit:0.18, name:'the faintest red',   line:'a red you only see because the shed is dark. it would be invisible in daylight.' },
+  { max: 1350, key:'dull',    col:'#8c1f06', lit:0.34, name:'dull red',           line:'dull red, and sullen with it. this is where the cristobalite inversion lives — no draughts.' },
+  { max: 1650, key:'cherry',  col:'#c33c07', lit:0.55, name:'cherry red',         line:'cherry red. the old books measure by this and they are not wrong to.' },
+  { max: 1900, key:'orange',  col:'#e8720d', lit:0.74, name:'orange',             line:'orange, and moving. still far too hot to be thinking about the door.' },
+  { max: 2150, key:'bright',  col:'#ffa22a', lit:0.88, name:'bright orange',      line:'bright orange. everything in there is still soft enough to care about.' },
+  { max: 9999, key:'white',   col:'#ffd98f', lit:1.00, name:'yellow-white',       line:'yellow-white and you cannot look straight at it. that is a working kiln, not a cooling one.' },
+];
+
+// BEAT 1 — the tick. What the room is doing while you wait, keyed to temperature.
+// The kiln cools for longer than it fired, and the game lets you sit with that.
+export const COOLING = [
+  { max:  420, t:'cool enough. whatever happened in there has finished happening.' },
+  { max:  700, t:'the ticking has spread out to one every few seconds. it is nearly over and it is nearly safe.' },
+  { max: 1100, t:'past the quartz inversion. the ticking is slower now, and further apart, and further away.' },
+  { max: 1500, t:'the brick is talking to itself. every tick is something in there letting go of a little more heat.' },
+  { max: 1900, t:'it ticks as it comes down — sharp, irregular, somewhere behind the door.' },
+  { max: 9999, t:'still roaring quietly to itself with the burners off. nothing to do but let it.' },
+];
+
+// BEAT 3 — you open it, and everything is there at once and none of it is in
+// your hands yet. Still too warm to read a surface: you get the shape and the
+// heat and nothing else, which is the whole point of making beat 4 slow.
+export const OPENING = {
+  head:  'the door is off',
+  sub:   'everything at once, still warm, none of it in your hands.',
+  line:  'you can see all of it and none of it properly. take them out one at a time — the one you flagged comes out last, which is either a reward or a punishment and you will not know which until it does.',
+  noflag:'you flagged nothing this firing, so they come out in the order you stacked them.',
 };
