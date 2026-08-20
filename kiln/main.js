@@ -3,10 +3,11 @@
 // place that touches document, and the only place Math.random is allowed.
 import * as THREE from 'three';
 import { FIRE, FORMS, GLAZES, POSITIONS, EVENT_NAMES, ZONE_NAMES, ECON, MOOD, CLIENTS, GUIDE, PRIMER,
-         INSTRUMENTS, REFIRE, GLOW, COOLING, OPENING, WEAR, CERTAINTY } from './data.js';
+         INSTRUMENTS, REFIRE, GLOW, COOLING, OPENING, WEAR, CERTAINTY, KILN_GODS } from './data.js';
 import { judge, counterfactuals, settle, offerCommissions } from './verdict.js';
 import { ensureKiln, shelfMods, drawShift, canTake, wearFrom, repairShelf,
          describeShelf, kilnSummary, drawTrial } from './kiln.js';
+import { rareOf, rareById, allRares, luckBias, ensureLuck, scoreNight, tickLuck } from './rare.js';
 import { logReading, truthOf, ensure as nbEnsure, isConfirmed, pagesFor,
          confirmedCount, totalInstruments, refirable } from './notebook.js';
 import { newFiring, step, setControl, harvest, openKiln, coneDown, CONE_ORDER, hhmm, lcg } from './sim.js';
@@ -23,7 +24,8 @@ const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const KEY='kiln-save';
 const DEFAULTS={ started:true, firings:0, pots:[], broken:0, effects:{}, notebook:{},
                  members:{}, kiln:{scars:0}, settings:{mute:false},
-                 money:ECON.startMoney, comDone:{}, ledger:[], taught:{}, carry:[] };
+                 money:ECON.startMoney, comDone:{}, ledger:[], taught:{}, carry:[],
+                 rares:{}, luck:{dry:0,rich:0}, god:null, gods:[] };
 // ⚠️ BUG FIXED (M1): an EMPTY object default ({} — effects, notebook, members, comDone)
 // recursed into mergeDefaults(saved, {}), whose loop over Object.keys({}) does nothing,
 // so it returned {} and silently WIPED the saved value on every reload. "17/16 effects
@@ -108,6 +110,24 @@ function showNotebook(){
     if(seen) c.title=k; chips.appendChild(c);
   }
   fx.appendChild(chips); B.appendChild(fx);
+  // §8 — the landmarks. Six things the fire can do that no ordinary combination
+  // reaches. Locked ones show only that they exist, never how to get them: the
+  // whole reward is working the combination out.
+  const rr=el('div','nbpage');
+  rr.innerHTML='<h3 class="lc">what the fire can do</h3><div class="nbat lc">'
+    +Object.keys(SAVE.rares).length+' of '+allRares().length+' found</div>';
+  for(const r of allRares()){
+    const got=SAVE.rares[r.id];
+    const d=el('div','nbchip'+(got?' on':''));
+    d.style.cssText='display:block;margin-bottom:6px;padding:8px 11px';
+    d.innerHTML = got
+      ? '<b>'+r.name+'</b> — '+r.of+'<br><span style="color:var(--dim2)">'+r.note
+        +' · first on firing '+got.found+(got.n>1?', '+got.n+' since':'')+'</span>'
+      : '<span style="color:var(--dim2)">— — — — — not yet</span>';
+    rr.appendChild(d);
+  }
+  B.appendChild(rr);
+
   // the record
   const rec=el('div','nbpage');
   rec.innerHTML='<h3 class="lc">the record</h3><div class="nbat lc">every firing, and what it cost</div>';
@@ -143,9 +163,10 @@ function startFiring(){
   $('#b-crack').textContent='crack the door'; $('#b-crack').disabled=false;
   // §5.5 — this is not A kiln, it is YOUR kiln, and it remembers. The wear is an
   // INPUT to the sim, so the firing stays deterministic (tests/kiln.mjs).
-  SAVE.kiln=ensureKiln(SAVE.kiln);
-  G.S=newFiring(G.seed, [], { posMod:shelfMods(SAVE.kiln), flue:drawShift(SAVE.kiln) });
-  G.trial=null;
+  SAVE.kiln=ensureKiln(SAVE.kiln); SAVE.luck=ensureLuck(SAVE.luck);
+  G.S=newFiring(G.seed, [], { posMod:shelfMods(SAVE.kiln), flue:drawShift(SAVE.kiln),
+                              luck:luckBias(SAVE.luck) });
+  G.trial=null; G.rares=[];
   $('#firingno').textContent=`firing ${SAVE.firings+1}`;
   const C=$('#conds'); C.innerHTML='';
   const rows=[['the kiln',G.S.cond.kiln],['the flue',G.S.cond.draw],['the tank',G.S.cond.fuel]];
@@ -157,6 +178,7 @@ function startFiring(){
   }
   const sum=G.S.cond.kiln[2]+G.S.cond.draw[2]+G.S.cond.fuel[2]+drawShift(SAVE.kiln);
   drawKilnState();
+  drawGodBox();
   drawBoard();
   $('#moneyline').textContent = `${SAVE.money<0?'−$':'$'}${Math.abs(SAVE.money)} in the tin`;
   $('#condread').textContent = sum>0.15 ? "it'll want less gas than you think tonight."
@@ -172,6 +194,34 @@ function startFiring(){
 // §6.4 — and the draw trial, the one way to turn "approximately" into "precisely".
 // It costs fuel and half an hour. Information costs production.
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// §14.4 — THE KILN GOD. Potters make a small clay figure and set it on the kiln
+// for luck, and afterwards it is variously kept, broken, thrown out, or quietly
+// left there for years.
+// ⚠️⚠️ §19.10 — IT DOES NOTHING. Not +5%, not +1%, not "slightly". It is never
+// passed to newFiring, never read by the sim, and never touches a pot. The moment
+// it grants anything you have destroyed the only genuinely superstitious thing in
+// the design. It exists to be made, to sit there, and to be remembered afterwards.
+// ---------------------------------------------------------------------------
+function drawGodBox(){
+  const B=$('#godbox'); if(!B) return;
+  B.innerHTML="";
+  B.appendChild(el("div","k","the kiln god"));
+  if(SAVE.god){
+    B.appendChild(el("div","godmade lc", SAVE.god.name+" is on the arch."));
+    B.appendChild(el("div","godline lc", SAVE.god.line));
+    return;
+  }
+  B.appendChild(el("div","godline lc","make something out of the scrap clay and put it on the arch, if you want. it will not help."));
+  const row=el("div","godrow");
+  for(const g of KILN_GODS){
+    const b=el("button","lc",g.name);
+    b.onclick=()=>{ A.click(); SAVE.god={...g}; save(); drawGodBox(); };
+    row.appendChild(b);
+  }
+  B.appendChild(row);
+}
+
 const fmtPct = v => v===0 ? 'neutral' : (v>0?'+':'') + (v*100).toFixed(0) + '%';
 
 function drawKilnState(){
@@ -794,7 +844,16 @@ function nextPot(){
   const opts={ form:p.form, glaze:p.glaze, pos:p.pos,
                heat:p.heat, red:p.red, cool:p.cool, thick:p.thick||0 };
   const pot=firePot(p.seed, opts);
-  const potName=nameOf(pot);
+  // §8 — is this one of the six landmarks? Deterministic: a specific, hard,
+  // discoverable combination of things you did, never a roll. The name it earns
+  // REPLACES the generated one, because that is the whole reward.
+  const rare=rareOf(pot, G.S);
+  const potName = rare ? `${FORMS[pot.formKey].name} · ${rare.name}` : nameOf(pot);
+  if(rare){
+    G.rares.push(rare.id);
+    if(!SAVE.rares[rare.id]){ SAVE.rares[rare.id]={ found:SAVE.firings+1, n:0 }; }
+    SAVE.rares[rare.id].n++;
+  }
   const dunted=pot.events.some(e=>e.k==='dunt');
 
   // draw it — in 3D if there is a live context, flat if there is not. Either way
@@ -840,6 +899,17 @@ function nextPot(){
   $('#beatline').textContent = G.unIdx===G.results.length-1 && G.flag ? '★ the one you were hoping for' : `${POSITIONS[p.pos].name} · ${owner}`;
   $('#potname').textContent=`${form} · ${glaze}`;
   $('#potev').textContent = rest.join(', ')||'plain and sound';
+  // a landmark gets its own beat — it is the thing you were hoping for, and the
+  // reveal should stop for it rather than let it slide past in a list.
+  const rc=$('#potrare');
+  if(rare){
+    rc.style.display='';
+    rc.innerHTML='';
+    rc.appendChild(el('div','rl lc', rare.of));
+    rc.appendChild(el('div','rn lc', rare.note));
+    if(SAVE.rares[rare.id].n===1) rc.appendChild(el('div','rf lc','first one. it is in the notebook now.'));
+    A.chime(true);
+  } else rc.style.display='none';
   $('#potprov').textContent=provenance(p,pot);
   $('#b-next').textContent = G.unIdx>=G.results.length-1 ? 'that’s the load' : 'take it out';
   // record it. the pot regenerates from seed + firing, never from pixels.
@@ -877,7 +947,11 @@ function finish(){
   // actually produced instead.
   const mine=SAVE.pots.filter(x=>x.firing===SAVE.firings);
   const perfect=mine.length>0 && mine.every(x=>x.sound);
-  if(perfect){ SAVE.kilnGod=true; toast('nothing broke. the kiln god stays on the arch.'); A.chime(true); }
+  // §14.4 — the kiln god that sat on the arch through it all. It did nothing,
+  // which is the point (§19.10), but it was there and it is remembered.
+  if(SAVE.god){ SAVE.gods.push({ ...SAVE.god, firing:SAVE.firings, perfect:false }); SAVE.god=null; }
+  if(perfect){ SAVE.kilnGod=true;
+    if(SAVE.gods.length) SAVE.gods[SAVE.gods.length-1].perfect=true; toast('nothing broke. the kiln god stays on the arch.'); A.chime(true); }
   drawVerdict(); save(); show('scr-verdict'); teach('verdict');
 }
 
@@ -902,6 +976,15 @@ function drawVerdict(){
   applyMoods();
   // §5.5 — and the kiln itself is a different kiln tomorrow because of tonight
   SAVE.kiln = wearFrom(SAVE.kiln, G.fired, G.S);
+  // §4.5 — score the night and tick the two-sided protection. Coarse on purpose:
+  // this decides nothing the player sees, only whether the invisible floor starts
+  // helping. ⚠️ never surface it (§4.3).
+  SAVE.luck = tickLuck(SAVE.luck, scoreNight({
+    reachedCone10: G.S.hw >= FIRE.cones["10"],
+    commissionMet: V ? V.passed : undefined,
+    rares: G.rares.length,
+    broken: G.fired.filter(p=>!p.sound).length,
+    potCount: G.fired.length }));
 
   $('#vsub').textContent=`firing ${SAVE.firings} · ${G.fired.length} pieces out`;
 

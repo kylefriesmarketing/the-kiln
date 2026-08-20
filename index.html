@@ -122,6 +122,17 @@ h1,h2,h3{font-weight:500;margin:0;letter-spacing:.06em}
 .oslot.flag{border-color:var(--fire)}
 .oslot.flag .opn{color:var(--fire)}
 .openside{width:330px;display:flex;flex-direction:column;gap:12px}
+/* LANDMARKS + THE KILN GOD (M5) — §8, §14.4 */
+.potrare{border-left:2px solid var(--fire);padding:3px 0 3px 13px;margin-top:11px}
+.potrare .rl{color:var(--hot);font-size:13px;line-height:1.5}
+.potrare .rn{color:var(--dim);font-size:11.5px;line-height:1.6;margin-top:6px}
+.potrare .rf{color:var(--good);font-size:11.5px;margin-top:7px;font-style:italic}
+.godbox{border:1px solid var(--line);background:var(--ink2);padding:14px 16px;margin:0 0 18px}
+.godrow{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.godrow button{font-size:11.5px;padding:4px 10px}
+.godrow button.on{border-color:var(--fire);color:var(--hot);background:#241a12}
+.godline{color:var(--dim2);font-size:11.5px;margin-top:9px;line-height:1.55;font-style:italic}
+.godmade{color:var(--hot);font-size:12.5px;margin-top:8px}
 /* THE KILN'S OWN HISTORY (M4) — §5.5 — and buying certainty, §6.4 */
 .kilnstate{border:1px solid var(--line);background:var(--ink2);padding:14px 16px;margin:18px 0}
 .ksum{color:var(--pale);font-size:13px;margin-top:7px}
@@ -347,6 +358,7 @@ canvas.cones{width:100%;height:150px;border:1px solid var(--line);background:#0f
     <h3 class="lc" style="margin:22px 0 0;font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim2);font-weight:400">the board</h3>
     <div class="note lc" style="margin-top:6px">work somebody has asked for. take one or take none — you fire either way, and every pot you make is yours regardless.</div>
     <div class="kilnstate" id="kilnstate"></div>
+    <div class="godbox" id="godbox"></div>
     <div class="guide" id="g-board"></div>
     <div class="board" id="board"></div>
     <div class="foot"><span class="sub lc" id="moneyline"></span><span class="sp"></span><button class="prime lc" id="b-toload">the damp room →</button></div>
@@ -462,6 +474,7 @@ canvas.cones{width:100%;height:150px;border:1px solid var(--line);background:#0f
         <div class="beatline lc" id="beatline"></div>
         <div class="potname lc" id="potname"></div>
         <div class="potev lc" id="potev"></div>
+        <div class="potrare" id="potrare" style="display:none"></div>
         <div class="prov lc" id="potprov"></div>
         <div style="flex:1"></div>
         <button class="prime lc" id="b-next">take it out</button>

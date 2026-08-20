@@ -23,7 +23,12 @@ export function conePct(hw, cone){ return hw / FIRE.cones[cone]; }
 // randomness. Same kiln state + same seed = the same firing, byte for byte.
 export function newFiring(seed, load=[], wear=null){
   const rng=lcg(seed);
-  const pick=a=>a[Math.floor(rng()*a.length)];
+  // §4.5 — the invisible two-sided protection. It leans the CONDITIONS ROLL and
+  // nothing else: the dice still go in front of the door and are still shown in
+  // full (§4.2). The conditions arrays run worst→best, so a positive bias leans
+  // toward the kind end. ⚠️ NEVER SURFACE THIS (§4.3).
+  const bias=(wear&&wear.luck)||0;
+  const pick=a=>a[Math.floor(Math.max(0,Math.min(0.9999,rng()+bias))*a.length)];
   // ⚠️ §4.2 — THE DICE GO IN FRONT OF THE DOOR. These are rolled and SHOWN before
   // a single decision is made. Everything after this point is near-deterministic.
   const cond={ kiln:pick(FIRE.conditions.kiln), draw:pick(FIRE.conditions.draw), fuel:pick(FIRE.conditions.fuel) };
@@ -68,11 +73,21 @@ export function step(S, dt=FIRE.tick){
     const openness=0.25+S.eff.damper/F.damperMax;
     const r=(F.cool.base+openness*F.cool.ratePerNotch)*(S.temp-F.ambient)/100;
     const prev=S.temp; S.temp=Math.max(F.ambient,S.temp-r*dt); S.rate=-r*60;
-    // dunting happens on the way DOWN, through the inversions
-    for(const k of Object.keys(S.pos)){
-      const p=S.pos[k];
-      if((prev>F.cool.duntF&&S.temp<=F.cool.duntF)||(prev>F.cool.duntF2&&S.temp<=F.cool.duntF2))
-        p.coolRate=clamp(r/2.6,0,1);
+    // dunting happens on the way DOWN, through the inversions.
+    // ⚠️⚠️ THE DAMPER USED TO DO NOTHING HERE. The old normalisation was r/2.6,
+    // but r at the quartz inversion runs 6.5 (damper shut) to 10.7 (wide open) —
+    // so EVERY firing clamped to coolRate ≈ 0.95 no matter how carefully you cooled.
+    // Consequences, both live and both bad: `dunt` fires above 0.88, so about a
+    // third of every load cracked however gently you brought it down; and every
+    // slow-cool effect — crystals, hare's fur, oil spot — was UNREACHABLE in play
+    // while the notebook cheerfully told you to shut the damper and let it down
+    // gently. Normalise against what the damper could actually achieve AT THIS
+    // TEMPERATURE: 0 = shut and gentle, 1 = wide open and dropping. (2026-08-19)
+    if((prev>F.cool.duntF&&S.temp<=F.cool.duntF)||(prev>F.cool.duntF2&&S.temp<=F.cool.duntF2)){
+      const lo=(F.cool.base+0.25*F.cool.ratePerNotch)*(prev-F.ambient)/100;
+      const hi=(F.cool.base+1.25*F.cool.ratePerNotch)*(prev-F.ambient)/100;
+      const norm=clamp((r-lo)/Math.max(1e-6,hi-lo),0,1);
+      for(const k of Object.keys(S.pos)) S.pos[k].coolRate=norm;
     }
     S.t+=dt; return S;
   }

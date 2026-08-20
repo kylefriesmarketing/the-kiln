@@ -589,3 +589,103 @@ export const CERTAINTY = {
   // spyhole mid-firing with long tongs for one real, unambiguous observation.
   tile:  { cost: 3, max: 3 },
 };
+
+// ---------------------------------------------------------------------------
+// THE RARE TIER (M5). §8.
+// "A small hand-authored rare tier exists that no combination of parameters
+// produces — landmarks in the generative space... They are NOT LUCKY; they are
+// the reward for a specific, hard, discoverable combination."
+//
+// ⚠️ READ THAT TWICE. Every rare below is a DETERMINISTIC conjunction of things
+// you did: the glaze, how thick you laid it on, which shelf you chose, how hard
+// you reduced, how slowly you let it down. No rng anywhere. A player who works
+// out the combination can produce it ON PURPOSE, every time — that is the whole
+// point, and it is what separates a landmark from a jackpot.
+// ⚠️ Do NOT make these rarer by adding a dice roll. If one feels too common,
+// tighten its conditions.
+// ---------------------------------------------------------------------------
+export const RARES = [
+  { id:'oxblood', name:'oxblood',
+    of:'copper red, held hard and stopped exactly',
+    note:'copper reduced deep and hard, taken to cone 10 and stopped there. one cone further and it burns out.',
+    tint:[168,20,26],
+    when:(p,S)=> p.glazeKey==='copperred' && !p.copperFlip
+              && p.reduction>=0.95 && p.heatwork>=0.95 && p.heatwork<=1.18
+              && ['frontmid','flamelane','backmid'].includes(p.posKey) },
+
+  { id:'truefur', name:"hare's fur, the whole way down",
+    of:'iron pulled into streaks from rim to foot',
+    note:'tenmoku laid on thick, taken hot, and let down slowly enough for the iron to draw itself into threads.',
+    tint:[196,142,86],
+    when:(p,S)=> p.effGlaze==='tenmoku' && p.events.some(e=>e.k==='harefur')
+              && p.coolRate<=0.22 && p.heatwork>=0.95 && p.applied>=0.55 },
+
+  { id:'oilspot', name:'oil spot',
+    of:'silver droplets suspended in black',
+    note:'iron saturate, thick, very hot, and cooled slower than anyone has patience for.',
+    tint:[214,214,206],
+    when:(p,S)=> p.effGlaze==='tenmoku' && p.events.some(e=>e.k==='oilspot')
+              && p.coolRate<=0.18 && p.applied>=0.62 },
+
+  { id:'firemarked', name:'the shino that kept its orange',
+    of:'carbon trapped early, orange held to the end',
+    note:'shino, reduced early while the body was still open, on a shelf cool enough to hold the carbon in.',
+    tint:[226,116,44],
+    // ⚠️ this one was 16 of 28 landmarks in a measured sweep — its conditions had
+    // collapsed to "shino on a cool shelf", because reduction is already ≥0.95 in
+    // 86% of real firings. A trap needs the coat to be THICK and the shelf properly
+    // cold, or it is not a landmark, it is just what shino does.
+    when:(p,S)=> p.effGlaze==='shino' && p.events.some(e=>e.k==='carbontrap')
+              && p.reduction>=0.95 && p.applied>=0.62
+              && ['coolbottom','deadcorner'].includes(p.posKey) },
+
+  { id:'chunblue', name:'chun, broken blue',
+    of:'opalescent blue standing over a dark body',
+    note:'chun laid on thick and cooled slowly. thin chun is nothing at all; this is the other end of that.',
+    tint:[142,178,214],
+    when:(p,S)=> p.effGlaze==='chun' && p.applied>=0.70 && p.coolRate<=0.26 && p.heatwork>=0.92 },
+
+  { id:'ashsigned', name:'signed by the fire',
+    of:'ash run down the flame side and pooled where it stopped',
+    note:'ash glaze put where the flame actually touches, taken past cone 10 and soaked until it moved.',
+    tint:[176,146,72],
+    when:(p,S)=> p.effGlaze==='ash' && ['flamelane','flueshelf'].includes(p.posKey)
+              && p.events.some(e=>e.k==='run') && p.heatwork>=1.0 },
+];
+
+// ---------------------------------------------------------------------------
+// §4.5 — TWO-SIDED BAD-LUCK PROTECTION. Never surfaced, never a number on screen.
+// The research is blunt about why this exists: under independent rolls ~5% of
+// players need THREE TIMES the expected number of attempts, and in a game where
+// one firing is one session that 5% quits convinced the game is rigged.
+//
+// ⚠️ This nudges the CONDITIONS ROLL ONLY — the dice that §4.2 puts in front of
+// the door and shows you in full. It never touches the firing, never touches a
+// pot, and never lies about what it rolled. And per §4.3: bend it in the
+// player's favour and DO NOT MENTION IT. There is deliberately no UI for this.
+// ---------------------------------------------------------------------------
+export const LUCK = {
+  dryAfter: 2,        // consecutive poor nights before the floor starts helping
+  // ⚠️ MEASURED, and deliberately gentle. All THREE conditions take the same
+  // shift, so the effect compounds threefold on the night as a whole. At 0.30
+  // a dry run produced 76% kind nights against a 22% baseline — a player would
+  // see that, and §4.5 requires this to be invisible. These values move the
+  // odds without ever becoming legible.
+  dryBias: 0.13,      // how far it leans the conditions your way
+  richBias: -0.10,    // and how far it leans back after a remarkable one
+  maxDry: 4,
+};
+
+// §14.4 — KILN GODS. Potters make a small clay figure and set it on the kiln for
+// luck, and afterwards it is variously kept, broken, thrown out, or quietly left
+// there for years.
+// ⚠️⚠️ §19.10 — THE KILN GOD DOES NOTHING. Not +5%. Not +1%. Not "slightly".
+// The moment it grants anything you have destroyed the only genuinely
+// superstitious thing in the design. It is here to be made and to sit there.
+export const KILN_GODS = [
+  { id:'lump',    name:'a lump with a face',   line:'you did not spend long on it.' },
+  { id:'bird',    name:'a bird, more or less', line:'the beak fell off before it was dry. you pressed it back on.' },
+  { id:'figure',  name:'a small standing figure', line:'arms folded. it looks unimpressed with you.' },
+  { id:'beast',   name:'something with too many legs', line:'nobody has asked what it is meant to be.' },
+  { id:'ring',    name:'a ring with a thumbprint in it', line:'your thumb. that is the whole of it.' },
+];

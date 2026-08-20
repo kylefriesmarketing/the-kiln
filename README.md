@@ -127,6 +127,51 @@ seed is the same firing, byte for byte (`tests/kiln.mjs` asserts it).
   the spyhole mid-firing** for one unambiguous reading of what that shelf has actually
   been doing. That is the trade the bible names: information costs production.
 
+## What the fire can do — M5
+
+Six **landmarks**: outcomes no ordinary combination of parameters reaches. Oxblood.
+Hare's fur the whole way down. Oil spot. The shino that kept its orange. Chun broken
+blue. Signed by the fire.
+
+> ⚠️ §8: *"They are NOT LUCKY; they are the reward for a specific, hard, discoverable
+> combination."* Every one is a **deterministic** conjunction of things you did — the
+> glaze, how thick you laid it on, which shelf, how hard you reduced, how slowly you
+> let it down. There is no roll anywhere in `rareOf()`. A player who works out the
+> combination gets it **on purpose, every time**. If one feels too common, tighten its
+> conditions — **never add a die roll.**
+
+Measured at **0.60 per nine-pot load, 43% of loads with none.** The notebook tracks
+which you have found and never hints at the ones you have not.
+
+### ⚠️⚠️ The damper on the way down was doing NOTHING
+Found while testing the above, and it had been live since Phase 0. `coolRate` was
+normalised as `r / 2.6`, but the raw rate at the quartz inversion runs 6.5 (damper
+shut) to 10.7 (wide open) — so **every firing clamped to ~0.95 regardless of how you
+cooled it.** Two live consequences:
+
+- `dunt` fires above 0.88, so **about a third of every load cracked** no matter how
+  gently you brought it down;
+- every slow-cool effect — crystals, hare's fur, oil spot — was **unreachable in play**,
+  while the notebook told you to shut the damper and let it down gently.
+
+Now normalised against what the damper could achieve *at that temperature*, so 0 means
+shut and gentle and 1 means wide open. Measured on the same firing, same glaze:
+**damper shut → 0 cracked, a landmark found. Damper open → 4 cracked, none.**
+
+### The floor and the ceiling (§4.5)
+Two-sided bad-luck protection, nudging **the conditions roll only** — the dice still go
+in front of the door and are still shown in full. After a run of poor nights it leans
+your way; after a remarkable one it leans back, so remarkable stays rare.
+⚠️ It is deliberately gentle and **never surfaced**: at the first value a drought
+produced 76% kind nights against a 22% baseline, which a player would have seen.
+There is no UI for it and there should not be one.
+
+### The kiln god (§14.4)
+Make one out of scrap clay before you load. It sits on the arch.
+> ⚠️⚠️ **§19.10 — IT DOES NOTHING.** Not +5%, not +1%, not "slightly". It is never
+> passed to the sim and never read by it — `tests/rare.mjs` asserts that no kiln god
+> carries a numeric field at all, so it *cannot* become a buff by accident.
+
 ## Files
 | | |
 |---|---|
@@ -136,6 +181,7 @@ seed is the same firing, byte for byte (`tests/kiln.mjs` asserts it).
 | `kiln/verdict.js` | the brief, the margin, the tin. DOM-free, no rng, never scores an object. |
 | `kiln/notebook.js` | confirm-in-threes, and which pots may go back in. DOM-free, no rng. |
 | `kiln/kiln.js` | the machine's own memory — wear, the draw trial. DOM-free, no rng. |
+| `kiln/rare.js` | the six landmarks, and the invisible floor. DOM-free, no rng. |
 | `kiln/main.js` | phases, UI, save. The only file that touches the DOM. |
 | `kiln/audio.js` | WebAudio, zero sound files. |
 | `gate.html` | the render gate — 30 pots, one firing each, for the squint test. |
@@ -175,6 +221,7 @@ node tests/verdict.mjs      # the brief, the margin, the tin — asserts the act
 node tests/notebook.mjs     # confirm-in-threes, the silence, and the refire lever
 node tests/reveal.mjs       # colour temperature, and that the cooling gate is a real wait
 node tests/kiln.mjs         # wear is an INPUT not a die roll, and the warp rate is sane
+node tests/rare.mjs         # every landmark is REACHABLE, and none is lucky
 node tests/census.mjs       # event frequency. a DISTRIBUTION to read, not a pass/fail
 node tests/calibrate.mjs    # re-derives the thermodynamic constants and cone thresholds
 node tests/smoke.mjs        # drives the real UI in a browser (needs playwright)
@@ -208,6 +255,11 @@ part the player experiences and that is tuned. Change it with a census, not a hu
 - `tests/census.mjs` imports `pot.js`, which imports the bare specifier `three`. Node
   needs a shim: `node_modules/three/` re-exporting `../../lib/three.module.js`
   (gitignored, two files, recreate it if it's missing).
+- ⚠️ **Two sampled dimensions must be independent of EACH OTHER, not just coprime.**
+  This has bitten three times now. `glaze = G[(i*7)%9]` with `pos = P[(i*5)%9]` is
+  correlated mod 9 — shino only ever lands on the flue shelf, ash only on the middle —
+  and two perfectly reachable landmarks reported zero hits and looked impossible.
+  Nest the loops, or offset one index by something that varies.
 - Sweep strides must be **coprime** to the list length. `G[(i*3)%9]` visits three of
   nine glazes and makes four events look dead.
 - Patch scripts must use a **function replacer** — `s.replace(from, () => to)`.
