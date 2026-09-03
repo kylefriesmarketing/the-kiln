@@ -43,6 +43,31 @@ over three seconds.
 > that answers you beats a kiln that is technically faithful. The lag is still there — it
 > is just felt in seconds rather than invisible.
 
+## The needle — M8, and the thing that makes it a game
+
+Before this, the firing gave you a demand in words *("reducing — long orange flame")*
+and a flame in words *("burning clean")* and left you to compare the two in your head.
+That is a reading comprehension exercise, not a game.
+
+Now it is **one thing you hold**: a gauge showing the band the kiln wants, a needle
+where you actually are, and a bar that fills while you keep it there — with the pass
+mark said out loud. Measured live on body reduction:
+
+| | in the band | held |
+|---|---|---|
+| arrive | ✗ | 0% |
+| stay lean | ✗ | 0% |
+| **close the damper** | ✓ | 9% → 29% → 41% → **50% → 57%** → 62% → 66% |
+
+The gauge switches axis to whatever the current window is actually judged on —
+atmosphere, climb rate, or the gas valve itself — and every number it draws is the
+same number `tickWindows()` scores you with, so **it cannot disagree with the verdict.
+It IS the verdict, shown live.**
+
+> ⚠️ The `gas` axis exists because **candle**, the first and longest window, judges the
+> controls rather than the fire. Without it a new player's first sixty seconds showed a
+> needle with no target at all.
+
 ## Controls
 - **gas · primary air · the damper** — click a detent. A change takes **2–3½ seconds** to
   show at the spyhole: enough that you are still steering the kiln of a moment ago, little

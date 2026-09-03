@@ -240,6 +240,22 @@ h1,h2,h3{font-weight:500;margin:0;letter-spacing:.06em}
 .slot.flag::after{content:'★';position:absolute;top:6px;right:8px;color:var(--fire)}
 
 /* ---------- fire ---------- */
+/* THE NEEDLE (M8). The single change that turns the firing from reading two
+   texts and inferring, into a thing you PLAY: keep the needle in the band. */
+.gauge{margin-top:12px}
+.gtrack{position:relative;height:26px;border:1px solid var(--line2);background:#0d0a09;overflow:hidden}
+.gband{position:absolute;top:0;bottom:0;background:rgba(255,166,77,.20);
+  border-left:2px solid var(--fire);border-right:2px solid var(--fire);transition:left .25s,width .25s}
+.gband.none{display:none}
+.gneedle{position:absolute;top:-3px;bottom:-3px;width:3px;background:var(--paper);
+  box-shadow:0 0 9px 2px rgba(244,232,214,.5);transition:left .12s linear}
+.gauge.inband .gneedle{background:var(--good);box-shadow:0 0 12px 3px rgba(163,196,137,.65)}
+.gauge.inband .gtrack{border-color:var(--good)}
+.gscale{display:flex;justify-content:space-between;margin-top:5px}
+.gscale span{color:var(--dim2);font-size:10.5px;letter-spacing:.06em}
+.ghold{position:relative;height:14px;margin-top:8px;display:flex;align-items:center;gap:10px}
+.ghold i{display:block;height:4px;background:var(--fire);width:0;transition:width .2s;flex:0 0 auto;min-width:2px}
+.ghold .gh{color:var(--dim);font-size:11.5px;white-space:nowrap}
 /* ⚠️ THE SPYHOLE IS THE SCREEN NOW. It used to be one 300px column among three,
    sharing space with 22 numbers across 7 panels — and the flame is the instrument
    §6.3 calls "the real one". A player has to be able to SEE the kiln answer them. */
@@ -428,6 +444,16 @@ canvas.cones{width:100%;height:150px;border:1px solid var(--line);background:#0f
       <div class="inst">
         <div class="k">the spyhole</div>
         <div class="spywrap"><canvas id="spy" width="900" height="520"></canvas></div>
+        <!-- THE NEEDLE. What the kiln wants and where you actually are, as ONE
+             thing you hold, instead of two blocks of text to compare. -->
+        <div class="gauge" id="gauge">
+          <div class="gtrack">
+            <div class="gband" id="gband"></div>
+            <div class="gneedle" id="gneedle"></div>
+          </div>
+          <div class="gscale"><span id="gs0"></span><span id="gs1"></span><span id="gs2"></span></div>
+          <div class="ghold"><i id="gholdbar"></i><span class="gh lc" id="gholdtxt"></span></div>
+        </div>
         <div class="flameread">
           <div class="fr1 lc" id="flame1">—</div>
           <div class="fr2 lc" id="flame2"></div>

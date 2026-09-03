@@ -603,9 +603,62 @@ function paintFire(){
     $('#winplain').textContent = nx? 'coming up — '+(nx.plain||'') : 'that is the whole schedule. shut it down when you are ready.';
     $('#winbar').style.width='0';
   }
+  paintGauge(S, w);
   A.burners(S.eff.gas/FIRE.gasMax, S.atm);
   $('#firehint').textContent = S.flags.missedReduction ? 'the door is shut. there will be no reduction in this firing.' : '';
 }
+// ---------------------------------------------------------------------------
+// THE NEEDLE (M8). §6 gave the player a demand in words and a flame in words and
+// left them to compare the two in their head. This makes it ONE thing: the band
+// the kiln wants, the needle where you actually are, and a bar that fills while
+// you hold it there. Everything it draws comes from the same numbers the sim
+// scores you on (S.atm / S.rate against w.want), so the gauge cannot ever
+// disagree with the verdict — it IS the verdict, shown live.
+// ---------------------------------------------------------------------------
+const GAUGE = {
+  atm:  { lo:-0.8, hi:1.2,  marks:['burning clean','neutral','reducing'], read:S=>S.atm },
+  rate: { lo:-60,  hi:520,  marks:['falling','climbing','climbing hard'], read:S=>S.rate },
+  // ⚠️ CANDLE — the first and longest window — judges the CONTROLS (gas 1-3,
+  // damper 6-10), not the fire. Without this axis the gauge showed a needle with
+  // no target for the whole first minute of a new player's first firing.
+  gas:  { lo:0, hi:12, marks:['off','half','wide open'], read:S=>S.set.gas },
+};
+function paintGauge(S, w){
+  const g=$('#gauge'), band=$('#gband'), needle=$('#gneedle');
+  if(!g) return;
+  // which axis is this window actually judging?
+  // show the axis this window is actually judged on
+  const kind = !w ? 'atm' : w.want.rate ? 'rate' : w.want.atm ? 'atm' : w.want.gas ? 'gas' : 'atm';
+  const cfg  = GAUGE[kind];
+  const val  = cfg.read(S);
+  const pct  = v => clamp((v-cfg.lo)/(cfg.hi-cfg.lo),0,1)*100;
+  $('#gs0').textContent=cfg.marks[0];
+  $('#gs1').textContent=cfg.marks[1];
+  $('#gs2').textContent=cfg.marks[2];
+  needle.style.left=pct(val).toFixed(1)+'%';
+
+  const want = w && (w.want[kind]);
+  if(!want){ band.className='gband none'; g.classList.remove('inband');
+    $('#gholdbar').style.width='0'; $('#gholdtxt').textContent = w ? '' :
+      'nothing is being asked of you right now.'; return; }
+
+  const a=pct(want[0]), b=pct(want[1]);
+  band.className='gband';
+  band.style.left=Math.min(a,b)+'%'; band.style.width=Math.abs(b-a)+'%';
+
+  // in the band or not — the same test tickWindows() scores you with
+  const inb = val>=want[0] && val<=want[1];
+  g.classList.toggle('inband', inb);
+
+  // how much of this window you have actually held. 55% is the pass mark, and
+  // saying so out loud is the difference between a game and a guessing game.
+  const sc=S.win.score[w.id];
+  const held=sc && sc.n ? sc.good/sc.n : 0;
+  $('#gholdbar').style.width=(held*100).toFixed(0)+'%';
+  $('#gholdtxt').textContent = (inb?'holding · ':'out of the band · ')
+    + Math.round(held*100)+'% of this window (55% is a hold)';
+}
+
 function wantText(w){
   const p=[];
   if(w.want.gas) p.push(`gas ${w.want.gas[0]}–${w.want.gas[1]}`);
