@@ -75,7 +75,7 @@ export function fit(glazeKey, posKey) {
   }
 
   // the dead corner is bad for everything, and should say so
-  if (P.heat <= -1.2) { score -= 1.2; note(-2.6, 'cold and still. nothing does well here'); }
+  if (P.heat <= -1.2) { score -= 1.2; note(-2.6, 'nothing you care about should go in the corner'); }
 
   // ⚠️ 1.2, chosen by sweeping every glaze × shelf. At 1.3 and above SHINO has no
   // home anywhere in the kiln (its best, the back middle, scores 1.24 — reduction

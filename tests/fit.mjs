@@ -66,7 +66,7 @@ console.log('\nthe dead corner is honest about itself');
 {
   ok('nothing opinionated does well in the dead corner',
      G.filter(g => !isFlexible(g)).every(g => fit(g, 'deadcorner').rank !== 'good'));
-  ok('...and it says why', /cold and still|dull/.test(fit('tenmoku','deadcorner').why));
+  ok('...and it says why', /corner|dull/.test(fit('tenmoku','deadcorner').why));
   ok('the ash glaze wants flame contact', fit('ash','flueshelf').rank === 'good' || fit('ash','flamelane').rank === 'good');
 }
 

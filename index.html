@@ -411,15 +411,24 @@ canvas.cones{width:100%;height:150px;border:1px solid var(--line);background:#0f
 
   <section id="scr-cond" class="scr">
     <div class="hd"><h2 class="lc">before you load</h2><span class="sub lc" id="firingno"></span></div>
-    <div class="note lc">read the kiln before you read the shelf. everything after the door is bricked up follows from what it's doing tonight — and you get to see all of it now.</div>
+    <!-- ⚠️ ORDER IS THE POINT. Everything above "the board" is TONIGHT'S STATE —
+         the weather, the arc, the kiln's own condition, the god on the arch. The
+         board is the one DECISION, so nothing stands between its heading and it.
+         This used to read: heading "the board", then 114 words about the arc, the
+         brickwork and the scrap clay, and only THEN the commissions.
+         ⚠️ And the two standing notes here are SHORT on purpose. Ruthie's panels
+         say the same things at length, once, and `?` brings the whole primer back
+         forever (§10) — a 31-word paragraph repeating it on every firing for the
+         rest of the game is the thing that makes this screen feel like homework. -->
+    <div class="note lc">tonight's weather, and what it will do to you. none of it is your fault yet.</div>
     <div class="guide" id="g-cond"></div>
     <div class="conds" id="conds"></div>
     <div class="note lc" id="condread"></div>
-    <h3 class="lc" style="margin:22px 0 0;font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim2);font-weight:400">the board</h3>
-    <div class="note lc" style="margin-top:6px">work somebody has asked for. take one or take none — you fire either way, and every pot you make is yours regardless.</div>
     <div class="arcline" id="arcline"></div>
     <div class="kilnstate" id="kilnstate"></div>
     <div class="godbox" id="godbox"></div>
+    <h3 class="lc" style="margin:22px 0 0;font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim2);font-weight:400">the board</h3>
+    <div class="note lc" style="margin-top:6px">take one or take none. you fire either way.</div>
     <div class="guide" id="g-board"></div>
     <div class="board" id="board"></div>
     <div class="foot"><span class="sub lc" id="moneyline"></span><span class="sp"></span><button class="prime lc" id="b-toload">the damp room →</button></div>
