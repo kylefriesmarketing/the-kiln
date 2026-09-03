@@ -43,16 +43,33 @@ export const GLAZES = {
 };
 
 // The nine named positions. Position is chemistry. (§5.4)
+// ⚠️ `hint` is what the shelf says about itself on the load screen, and it must
+// be TRUE OF THE NUMBERS BESIDE IT. Before this there was a threshold ladder in
+// main.js that collapsed THREE of the nine shelves onto the identical string
+// "good atmosphere." — so a third of the kiln was not a distinct choice at all,
+// which is fatal on the one screen the bible says carries most of the decision
+// weight (§5.4). One line each, naming the mechanism that shelf actually drives:
+// heat, red (atmosphere), flow (glaze running and pooling — pot.js:103), ash and
+// flash (marks the flame leaves — pot.js:122).
 export const POSITIONS = {
-  flamelane:  { name:'flame lane',   heat:+1.0, red:+1.0, flow:+0.25, flash:0.9,  ash:0.7 },
-  frontmid:   { name:'front middle', heat:+0.6, red:+0.7, flow:+0.12, flash:0.35, ash:0.3 },
-  fronttop:   { name:'front top',    heat:+0.7, red:+0.3, flow:+0.10, flash:0.15, ash:0.15 },
-  middle:     { name:'middle',       heat: 0.0, red: 0.0, flow: 0.00, flash:0.05, ash:0.1 },
-  backmid:    { name:'back middle',  heat:-0.2, red:+0.5, flow:-0.05, flash:0.05, ash:0.2 },
-  backtop:    { name:'back top',     heat:+0.5, red:-1.0, flow:+0.08, flash:0.05, ash:0.05 },
-  coolbottom: { name:'cool bottom',  heat:-1.0, red:-0.3, flow:-0.35, flash:0.0,  ash:0.05 },
-  deadcorner: { name:'dead corner',  heat:-1.4, red:-0.6, flow:-0.50, flash:0.0,  ash:0.0 },
-  flueshelf:  { name:'flue shelf',   heat:-0.1, red:+0.2, flow:-0.10, flash:0.1,  ash:0.9 },
+  flamelane:  { name:'flame lane',   heat:+1.0, red:+1.0, flow:+0.25, flash:0.9,  ash:0.7,
+                hint:'hottest shelf, heaviest reduction, and the flame marks what sits here.' },
+  frontmid:   { name:'front middle', heat:+0.6, red:+0.7, flow:+0.12, flash:0.35, ash:0.3,
+                hint:'hot and reducing without the flame quite touching. where a red is safe.' },
+  fronttop:   { name:'front top',    heat:+0.7, red:+0.3, flow:+0.10, flash:0.15, ash:0.15,
+                hint:'as hot as the front, but the atmosphere is thinner up here.' },
+  middle:     { name:'middle',       heat: 0.0, red: 0.0, flow: 0.00, flash:0.05, ash:0.1,
+                hint:'even. honest. unspectacular. nothing here will surprise you.' },
+  backmid:    { name:'back middle',  heat:-0.2, red:+0.5, flow:-0.05, flash:0.05, ash:0.2,
+                hint:'reducing AND a shade cooler — the one pairing this kiln is short of.' },
+  backtop:    { name:'back top',     heat:+0.5, red:-1.0, flow:+0.08, flash:0.05, ash:0.05,
+                hint:'hot, but the flame never reaches. it oxidises up here.' },
+  coolbottom: { name:'cool bottom',  heat:-1.0, red:-0.3, flow:-0.35, flash:0.0,  ash:0.05,
+                hint:'runs cool. glaze stays where you put it, and thin coats crawl.' },
+  deadcorner: { name:'dead corner',  heat:-1.4, red:-0.6, flow:-0.50, flash:0.0,  ash:0.0,
+                hint:'cold and still. nothing likes it here.' },
+  flueshelf:  { name:'flue shelf',   heat:-0.1, red:+0.2, flow:-0.10, flash:0.1,  ash:0.9,
+                hint:'everything the fire carries goes out past this shelf, and some of it lands.' },
 };
 
 // Sixteen named surface events. Each has a position on the pot and an intensity. (§8)

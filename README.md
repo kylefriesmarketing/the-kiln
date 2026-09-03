@@ -88,7 +88,7 @@ finally reads:
 
 > ⚠️ It shows a **direction, never a solution.** Nine pieces into nine shelves means
 > somebody's work has to go somewhere it will not love, and choosing whose is the
-> decision.  asserts no glaze is good everywhere and every opinionated
+> decision. `tests/fit.mjs` asserts no glaze is good everywhere and every opinionated
 > one has somewhere it wants to be. And nothing here touches a fired pot — it judges
 > the plan, never the object (§4.4).
 

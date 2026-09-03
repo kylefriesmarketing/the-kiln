@@ -82,5 +82,32 @@ console.log('\nnothing here scores a POT (§4.4)');
      G.every(g => P.every(p => !/quality|score|star|\/5|rating/i.test(fit(g,p).why))));
 }
 
+// ---------------------------------------------------------------------------
+console.log('\nevery shelf is a DIFFERENT shelf (§5.4)');
+// ---------------------------------------------------------------------------
+{
+  // ⚠️ this existed because it FAILED: a threshold ladder in main.js collapsed
+  // front middle, front top and back middle onto the identical string
+  // 'good atmosphere.' — a third of the kiln was not a choice at all.
+  ok('every shelf says something about itself', P.every(p => POSITIONS[p].hint));
+  const hints = P.map(p => POSITIONS[p].hint);
+  ok('...and no two shelves say the same thing', new Set(hints).size === P.length,
+     hints.filter((h,i) => hints.indexOf(h) !== i).join(' | '));
+  ok('...in words, never numbers', hints.every(h => !/\d/.test(h)));
+
+  // the line has to be true of the numbers sitting beside it
+  const hottest = P.reduce((a,b) => POSITIONS[a].heat > POSITIONS[b].heat ? a : b);
+  const coldest = P.reduce((a,b) => POSITIONS[a].heat < POSITIONS[b].heat ? a : b);
+  const oxid    = P.reduce((a,b) => POSITIONS[a].red  < POSITIONS[b].red  ? a : b);
+  const ashiest = P.reduce((a,b) => POSITIONS[a].ash  > POSITIONS[b].ash  ? a : b);
+  ok('the hottest shelf says so', /hot/.test(POSITIONS[hottest].hint), hottest);
+  ok('the coldest shelf says so', /cold|cool/.test(POSITIONS[coldest].hint), coldest);
+  ok('the oxidising shelf says so', /oxidis/.test(POSITIONS[oxid].hint), oxid);
+  ok('the flue shelf names what the fire carries past it',
+     /flame|fire/.test(POSITIONS[ashiest].hint), ashiest);
+  ok('the flat shelf admits it is unremarkable',
+     /unspectacular|even|honest/.test(POSITIONS[P.find(p => POSITIONS[p].heat === 0 && POSITIONS[p].red === 0)].hint));
+}
+
 console.log(`\n${fail ? `${fail} FAILED, ` : ''}${pass} passed`);
 process.exit(fail ? 1 : 0);

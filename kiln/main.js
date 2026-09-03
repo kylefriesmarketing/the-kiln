@@ -420,12 +420,19 @@ function shelfHint(P, key){
   const worn = key ? describeShelf(SAVE.kiln, key) : '';
   return worn || shelfCharacter(P);
 }
+// ⚠️ The line lives on the shelf in data.js (§19.2), one each, all nine distinct.
+// This USED to be a threshold ladder, and the ladder collapsed front middle,
+// front top AND back middle onto the identical string 'good atmosphere.' — a
+// third of the kiln reading as the same shelf, on the screen that carries most
+// of the decision weight. The ladder survives only as a fallback for a shelf
+// somebody adds without writing its line.
 function shelfCharacter(P){
+  if(P.hint) return P.hint;
   if(P.heat>0.8) return 'hottest. heaviest reduction.';
   if(P.heat<-1.2) return 'cold and still. nothing likes it here.';
   if(P.heat<-0.8) return 'runs cool. crawls things.';
   if(P.red<-0.8) return 'oxidises up here.';
-  if(P.ash>0.8) return 'fast air. it dries the surface.';
+  if(P.ash>0.8) return 'the flame goes out past here, and some of it lands.';
   if(P.heat===0) return 'even. honest. unspectacular.';
   return 'good atmosphere.';
 }
