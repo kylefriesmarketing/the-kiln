@@ -795,3 +795,45 @@ export const FEN = {
   // ⚠️ §13: "There is no victory." This is a closing beat, not a win screen.
   close: 'that is the job, then. somebody taught you and did not make a thing of it, and now you have done the same, and the kiln does not care either way. the light is still on.',
 };
+
+// ---------------------------------------------------------------------------
+// WHAT EACH GLAZE WANTS (M9). §5.4, §7.1 — and §19.5.
+//
+// ⚠️ THE LOAD IS THE PUZZLE AND IT WAS UNSOLVABLE. A piece said "lidded jar /
+// chun / yours" and a shelf said "hottest, heaviest reduction", and NOTHING
+// anywhere said what chun wanted. Nine glazes, nine shelves, no stated relation:
+// the player was placing pots by coin flip while the bible calls this the place
+// where most of the game's decision weight lives.
+//
+// §19.5 also forbids failing a player on a variable they had no instrument for.
+// A glaze's preference is exactly such a variable, so it belongs on screen
+// BEFORE the door is bricked up.
+//
+// ⚠️ These are DIRECTIONS, not a solution. You have nine pieces and nine shelves,
+// so somebody's pot has to go somewhere wrong — that is the decision. Never turn
+// this into a single correct answer, and never score the finished pot with it (§4.4).
+//   red  : +1 wants heavy reduction · 0 does not care · -1 wants OXIDATION
+//   heat : +1 wants it hot · 0 middling · -1 tolerates a cool shelf
+//   ash  : +1 wants flame contact and flying ash
+//   cool : +1 wants a slow cool (shut the damper afterwards)
+// ---------------------------------------------------------------------------
+export const WANTS = {
+  tenmoku:  { red:+1, heat:+1, ash:0,  cool:+1,
+              line:'heavy reduction, laid on thick. slow cool and the iron draws into streaks.' },
+  celadon:  { red:+1, heat:+1, ash:0,  cool:0,
+              line:'clean reduction and real heat. thin. it will craze, and that is the point.' },
+  copperred:{ red:+1, heat:+1, ash:0,  cool:0,
+              line:'the heaviest reduction you have. get it wrong and it comes out green.' },
+  oribe:    { red:-1, heat:+1, ash:0,  cool:0,
+              line:'⚠ OXIDATION — the opposite of everything else. it wants the back top.' },
+  shino:    { red:+1, heat:-1, ash:0,  cool:0,
+              line:'early reduction and a cooler shelf, to trap the carbon and keep the orange.' },
+  chun:     { red:+1, heat:+1, ash:0,  cool:+1,
+              line:'thick, and cooled slowly. thin chun is nothing at all.' },
+  ash:      { red:0,  heat:+1, ash:+1, cool:0,
+              line:'put it where the flame actually touches. the fire does the decorating.' },
+  rutile:   { red:0,  heat:0,  ash:0,  cool:+1,
+              line:'a slow cool grows the crystals. it is patient rather than hot.' },
+  clear:    { red:0,  heat:0,  ash:0,  cool:0,
+              line:'it does not mind. it shows the clay and whatever happened to it.' },
+};

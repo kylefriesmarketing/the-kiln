@@ -68,6 +68,40 @@ It IS the verdict, shown live.**
 > controls rather than the fire. Without it a new player's first sixty seconds showed a
 > needle with no target at all.
 
+## The load is a puzzle you can solve — M9
+
+⚠️ It was not, and this was the biggest remaining hole. A piece said *"lidded jar /
+chun / yours"*. A shelf said *"flame lane — hottest, heaviest reduction"*. **Nothing
+anywhere said what chun wanted.** Nine glazes, nine shelves, no stated relationship —
+the player placed pots by coin flip, in the phase the bible calls the place where most
+of the decision weight lives. §19.5 also forbids failing a player on a variable they
+had no instrument for, and a glaze preference is exactly that.
+
+Now: pick up a piece and it tells you what it wants, and **every shelf says whether it
+suits**. The copper conflict — §7.1 calls it the best teaching mechanic in the game —
+finally reads:
+
+| holding | back top |
+|---|---|
+| **oribe** | ✓ *oxidising up here, which is the whole trick with oribe* |
+| **copper red** | ✗ *this shelf oxidises — the colour will not come* |
+
+> ⚠️ It shows a **direction, never a solution.** Nine pieces into nine shelves means
+> somebody's work has to go somewhere it will not love, and choosing whose is the
+> decision.  asserts no glaze is good everywhere and every opinionated
+> one has somewhere it wants to be. And nothing here touches a fired pot — it judges
+> the plan, never the object (§4.4).
+
+> ⚠️ **rutile and clear have no good shelf on purpose.** What rutile wants is a slow
+> COOL, which is a firing decision rather than a shelf, so it says *"does not mind —
+> spend it on one nothing else wants"*. That is more useful than a fake recommendation:
+> it names the pieces you can afford to put in the dead corner.
+
+> ⚠️ The good/bad bar is **1.2, swept across every glaze × shelf**. At 1.3+ shino has no
+> home anywhere in the kiln (its best, the back middle, scores 1.24 — reduction AND a
+> cooler shelf is a combination this kiln barely offers). Re-sweep if POSITIONS or
+> WANTS change.
+
 ## Controls
 - **gas · primary air · the damper** — click a detent. A change takes **2–3½ seconds** to
   show at the spyhole: enough that you are still steering the kiln of a moment ago, little
@@ -311,6 +345,7 @@ node tests/notebook.mjs     # confirm-in-threes, the silence, and the refire lev
 node tests/reveal.mjs       # colour temperature, and that the cooling gate is a real wait
 node tests/kiln.mjs         # wear is an INPUT not a die roll, and the warp rate is sane
 node tests/rare.mjs         # every landmark is REACHABLE, and none is lucky
+node tests/fit.mjs          # the load gives a direction, never a solution
 node tests/arc.mjs          # you can only teach what you settled, and there is no victory
 node tests/census.mjs       # event frequency. a DISTRIBUTION to read, not a pass/fail
 node tests/calibrate.mjs    # re-derives the thermodynamic constants and cone thresholds

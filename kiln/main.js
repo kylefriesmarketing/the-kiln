@@ -9,6 +9,7 @@ import { judge, counterfactuals, settle, offerCommissions } from './verdict.js';
 import { ensureKiln, shelfMods, drawShift, canTake, wearFrom, repairShelf,
          describeShelf, kilnSummary, drawTrial } from './kiln.js';
 import { rareOf, rareById, allRares, luckBias, ensureLuck, scoreNight, tickLuck } from './rare.js';
+import { fit, wantsOf, isFlexible } from './fit.js';
 import { arcState, arcLine, memberSlots, pendingLesson, teach as teachFen, fenReady,
          fenPolicy, fenOutcome, ensureFen } from './arc.js';
 import { logReading, truthOf, ensure as nbEnsure, isConfirmed, pagesFor,
@@ -370,7 +371,8 @@ function drawLoad(){
     const d=el('div','piece'+(p.tile?' tile':'')+(placed?' placed':'')+(G.sel===p.id?' sel':''));
     d.innerHTML=`<div class="n lc">${p.tile?'test tile':FORMS[p.form].name}${(p.mine&&!p.tile)?" ▾":""}</div>
       <div class="g lc">${GLAZES[p.glaze].name}${p.mine?' ▾':''}</div>
-      <div class="o lc">${who}</div>`;
+      <div class="o lc">${who}</div>
+      <div class="wants lc">${p.tile?'a tile reads the shelf it sits on. put it somewhere you want to know about.':wantsOf(p.glaze).line}</div>`;
     d.onclick=e=>{ A.click();
       if(p.mine && e.target.classList.contains('g')){
         p.glaze=YOURS[(YOURS.indexOf(p.glaze)+1)%YOURS.length]; drawLoad(); return; }
@@ -384,10 +386,19 @@ function drawLoad(){
   const K=$('#kilngrid'); K.innerHTML='';
   for(const [key,P] of Object.entries(POSITIONS)){
     const it=G.slots[key];
-    const s=el('div','slot'+(it?' full':'')+(G.flag===key?' flag':''));
+    // ⚠️ M9 — with a piece in hand, every shelf says whether it SUITS that glaze.
+    // This is the whole load puzzle: before it, a player had nine glazes and nine
+    // shelves and no stated relationship between them, and placed pots by coin flip.
+    // It shows a DIRECTION, never an answer — nine pieces into nine shelves means
+    // somebody's work has to go somewhere it will not love, and choosing whose is
+    // the decision the load phase exists for.
+    const held = G.sel ? G.damp.find(x=>x.id===G.sel) : null;
+    const f = (held && !held.tile && !it) ? fit(held.glaze, key) : null;
+    const s=el('div','slot'+(it?' full':'')+(G.flag===key?' flag':'')+(f?' fit-'+f.rank:''));
     s.innerHTML=`<div class="pn">${P.name}</div>`+
       (it?`<div class="it lc${it.tile?' tile':''}">${it.tile?'test tile':FORMS[it.form].name}</div><div class="ig lc">${it.tile?'pull it later':GLAZES[it.glaze].name}</div>`
-         :`<div class="hint lc">${shelfHint(P,key)}</div>`);
+         :`<div class="hint lc">${shelfHint(P,key)}</div>`
+           + (f?`<div class="fitwhy lc">${f.why}</div>`:''));
     s.onclick=()=>{ A.click(0.5);
       if(G.sel){ const p=G.damp.find(x=>x.id===G.sel);
         // §5.5 — a warped shelf will not sit a tall piece flat, and it says why

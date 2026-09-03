@@ -240,6 +240,17 @@ h1,h2,h3{font-weight:500;margin:0;letter-spacing:.06em}
 .slot.flag::after{content:'★';position:absolute;top:6px;right:8px;color:var(--fire)}
 
 /* ---------- fire ---------- */
+/* THE LOAD IS A PUZZLE YOU CAN SOLVE (M9). Pick a piece and the shelves that
+   suit it light up. §19.5: never fail a player on a variable they had no
+   instrument for — a glaze preference is exactly that. */
+.piece .wants{color:var(--dim);font-size:11px;line-height:1.5;margin-top:6px;display:none}
+.piece.sel .wants{display:block}
+.slot.fit-good{border-color:var(--good);border-style:solid;background:#161c14}
+.slot.fit-bad{border-color:var(--bad);border-style:solid;background:#1e1210;opacity:.72}
+.slot .fitwhy{font-size:11px;line-height:1.45;margin-top:6px}
+.slot.fit-good .fitwhy{color:var(--good)}
+.slot.fit-bad  .fitwhy{color:var(--bad)}
+.slot.fit-ok   .fitwhy{color:var(--dim2)}
 /* THE NEEDLE (M8). The single change that turns the firing from reading two
    texts and inferring, into a thing you PLAY: keep the needle in the band. */
 .gauge{margin-top:12px}
