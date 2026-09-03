@@ -12,11 +12,43 @@ kiln makes. Then it cools, which takes longer than the firing did. Then you open
 
 **Play:** double-click `PLAY-THE-KILN.bat` (or `node serve.mjs`) → http://localhost:8461
 
+## ⚠️ The firing used to be 21 seconds long
+
+Found 2026-08-19 after Kyle said the game *"still doesn't make any sense... too
+complicated... less of a fun game."* He was right, and this was why.
+
+`loop()` stepped **one sim-minute per animation frame**. At "1×" that is 60 sim-minutes
+per real second, so:
+
+| | was | now |
+|---|---|---|
+| the whole firing | **21 seconds** | ~10½ minutes at *attend* |
+| body reduction (the one-way door) | **0.5 seconds** | 15 seconds |
+| the candle | 2 seconds | 60 seconds |
+| control lag | 0.22–0.43s (invisible) | 2–3.5s (felt) |
+| at 600× | the night in **0.2s** | *skip ahead*, ~30s |
+
+The bible designs a 30–45 minute attended firing with eight windows you steer and a lag
+that makes it a prediction problem. **None of it existed.** It was a blur nobody could
+perceive, let alone act on, and every system built on top of it inherited that.
+
+The loop now runs on **real elapsed time** (it was also frame-rate dependent — half speed
+on a 30fps machine), speeds are named in sim-minutes per real second, and the spyhole is
+the screen: 31% of the firing view, with a line underneath saying what the flame *means*
+in plain words. Close the damper and it reads *burning clean → about neutral → reducing*
+over three seconds.
+
+> ⚠️ This contradicts §5.3, which calls the 15–30 minute lag "the deepest, cheapest source
+> of skill in the design". Kyle overrode it deliberately (§0 asks; he answered): a kiln
+> that answers you beats a kiln that is technically faithful. The lag is still there — it
+> is just felt in seconds rather than invisible.
+
 ## Controls
-- **gas · primary air · the damper** — click a detent. Every change takes 15–30 sim
-  minutes to show up, so you are always steering the kiln of twenty minutes ago.
-  The orange ghost on a control is where your last adjustment is still travelling.
-- **speed** — 1× / 30× / 120× / 600×. It drops to 1× the moment the kiln wants something.
+- **gas · primary air · the damper** — click a detent. A change takes **2–3½ seconds** to
+  show at the spyhole: enough that you are still steering the kiln of a moment ago, little
+  enough that you can watch it answer. The orange ghost on a dial is your change, travelling.
+- **speed** — attend / brisk / skip ahead, in sim-minutes per real second. It drops to
+  **attend** the moment the kiln wants something.
 - **m** — mute.
 
 ## Reading it

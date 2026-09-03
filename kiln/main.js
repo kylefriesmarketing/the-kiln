@@ -470,7 +470,7 @@ function beginFire(){
   const load=Object.entries(G.slots).filter(([,v])=>v).map(([pos,v])=>({...v,pos}));
   G.S.load=load;
   buildCtrls(); $('#log').innerHTML=''; lastLog=0;
-  G.speed=1; drawSpeed();
+  G.speed=FIRE.pace.attend; G.lastT=0; drawSpeed();
   A.burnersOn();
   // ⚠️ this is the note that matters most — control lag and the one-way door are the
   // two things a first-timer cannot possibly infer, and both are unforgiving.
@@ -546,7 +546,9 @@ function paintCtrls(){
   }
 }
 
-const SPEEDS=[[1,'1×'],[30,'30×'],[120,'120×'],[600,'600×']];
+// the speeds a player picks, in sim-minutes per real second. "attend" is the one
+// the kiln drops you to the moment it wants something.
+const SPEEDS=[[FIRE.pace.attend,'attend'],[FIRE.pace.brisk,'brisk'],[FIRE.pace.fast,'skip ahead']];
 function drawSpeed(){ const S=$('#speed'); S.innerHTML='';
   for(const [v,l] of SPEEDS){ const b=el('b',G.speed===v?'on':'',l);
     b.onclick=()=>{ G.speed=v; A.click(); drawSpeed(); }; S.appendChild(b); } }
@@ -554,12 +556,23 @@ function drawSpeed(){ const S=$('#speed'); S.innerHTML='';
 function loop(){
   G.raf=requestAnimationFrame(loop);
   const S=G.S;
+  // ⚠️ REAL ELAPSED TIME, not frames. The old version stepped a fixed number of
+  // sim-minutes per rAF frame, so the firing ran at 60 sim-min/sec (21 seconds for
+  // the whole night) AND ran at half that on a 30fps machine. G.speed is now
+  // sim-minutes per real second and the clock is the clock.
+  const now=performance.now();
+  const dtReal=Math.min(0.25,(now-(G.lastT||now))/1000); G.lastT=now;
   if(S.phase==='firing'||S.phase==='cooling'){
     const before=S.win.cur, beforeLog=S.log.length;
-    let n=Math.max(1,Math.round(G.speed/6));
-    for(let i=0;i<n;i++){ step(S, S.phase==='cooling'?3:1); if(S.phase==='open') break; }
+    // chunk to <=1 sim-minute a step so the integration stays as accurate as the
+    // headless harness, which always steps 1.
+    let rem=dtReal*G.speed*(S.phase==='cooling'?3:1);
+    let guard=0;
+    while(rem>0 && guard++<600){ const d=Math.min(1,rem); step(S,d); rem-=d; if(S.phase==='open') break; }
     // ⚠️ hard drop to 1× the moment a window opens. The player never watches nothing.
-    if(!before && S.win.cur && G.speed>1){ G.speed=1; drawSpeed(); A.chime(true); toast('the kiln wants something'); }
+    // §6.1 — hard drop to the attending pace the moment a window opens.
+    if(!before && S.win.cur && G.speed>FIRE.pace.attend){
+      G.speed=FIRE.pace.attend; drawSpeed(); A.chime(true); toast('the kiln wants something'); }
     if(S.log.length>beforeLog) paintLog();
   }
   if(S.phase==='cooling' && $('#scr-fire').classList.contains('on')){ A.burnersOff(); toCool(); return; }
@@ -573,6 +586,9 @@ function paintFire(){
   $('#pyro').className = 'val'+(S.temp>2200?' warn':'');
   $('#rate').textContent = (S.rate>=0?'+':'')+Math.round(S.rate);
   paintCtrls(); drawSpy(); drawCones();
+  const fr=flameRead(S);
+  $('#flame1').textContent=fr.a;
+  $('#flame2').textContent=fr.b;
   const w=S.win.cur ? FIRE.windows.find(x=>x.id===S.win.cur) : null;
   const box=$('#win');
   if(w){ box.className='window'; $('#winname').textContent=`${w.name}   (${S.win.i+1} of ${FIRE.windows.length})`;
@@ -624,7 +640,9 @@ function drawSpy(){
   x.fillStyle='#000'; x.fillRect(0,0,W,H);
   const hot=clamp((S.temp-500)/1900,0,1), rich=clamp(S.atm,0,1.2), lean=clamp(-S.atm,0,1);
   // the hole
-  const cx=W*0.5, cy=H*0.56, r=64;
+  // the canvas is 900x520 now; scale everything off its size instead of pixels
+  const R=Math.min(W,H);
+  const cx=W*0.5, cy=H*0.60, r=R*0.14;
   const g=x.createRadialGradient(cx,cy,2,cx,cy,r*2.4);
   const core = hot<0.25? '#2a0d04' : hot<0.5? '#8a2f06' : hot<0.75? '#e07414' : '#ffd89a';
   g.addColorStop(0,core); g.addColorStop(0.35,`rgba(255,${120+hot*90|0},40,${0.5+hot*0.4})`);
@@ -633,7 +651,7 @@ function drawSpy(){
   // the flame licking out — long/orange when reducing, short/blue/bushy when lean
   if(S.eff.gas>0.4){
     const t=performance.now()/380;
-    const len = 16 + rich*140 + hot*30;
+    const len = R*(0.05 + rich*0.42 + hot*0.10);
     const n = lean>0.25? 11 : 6;
     for(let i=0;i<n;i++){
       const a=-Math.PI/2 + (i/(n-1)-0.5)*(lean>0.25?1.5:0.65);
@@ -642,20 +660,33 @@ function drawSpy(){
       const c1 = lean>0.25 ? 'rgba(150,190,255,0.85)' : 'rgba(255,170,60,0.9)';
       const c2 = lean>0.25 ? 'rgba(90,140,255,0)'     : 'rgba(255,90,20,0)';
       gr.addColorStop(0,c1); gr.addColorStop(1,c2);
-      x.strokeStyle=gr; x.lineWidth= lean>0.25? 11 : 6+rich*8; x.lineCap='round';
+      x.strokeStyle=gr; x.lineWidth= (lean>0.25? 11 : 6+rich*8)*(R/300); x.lineCap='round';
       x.beginPath(); x.moveTo(cx,cy);
-      x.quadraticCurveTo(cx+Math.cos(a)*l*0.5+Math.sin(t*3+i)*7, cy+Math.sin(a)*l*0.6,
+      x.quadraticCurveTo(cx+Math.cos(a)*l*0.5+Math.sin(t*3+i)*(R*0.02), cy+Math.sin(a)*l*0.6,
                          cx+Math.cos(a)*l, cy+Math.sin(a)*l); x.stroke();
     }
   }
   // the brick surround
   x.fillStyle='#000'; x.globalCompositeOperation='destination-over';
   x.fillRect(0,0,W,H); x.globalCompositeOperation='source-over';
-  x.strokeStyle='#241f1b'; x.lineWidth=3; x.beginPath(); x.arc(cx,cy,r,0,7); x.stroke();
-  x.fillStyle='#6b6157'; x.font='21px ui-monospace,monospace';
-  const read = S.atm>0.5?'long, orange, licking': S.atm>0.15?'soft and orange':
-               S.atm>-0.05?'green-tinted — neutral': S.eff.gas<0.5?'nothing to see':'short, blue, bushy';
-  x.fillText(read, 18, H-18);
+  x.strokeStyle='#241f1b'; x.lineWidth=R*0.008; x.beginPath(); x.arc(cx,cy,r,0,7); x.stroke();
+}
+
+// ---------------------------------------------------------------------------
+// WHAT THE FLAME MEANS, IN WORDS, RIGHT NOW.
+// ⚠️ This is the legibility fix (Kyle, 2026-08-19: "doesn't make any sense...
+// too literal"). The flame is the real instrument (§6.3) and it is beautiful,
+// but "long, orange, licking" only means something if you already do pottery.
+// The second line says what that IS and what it is doing to the pots — so a
+// player learns the vocabulary by seeing it next to its consequence, rather
+// than being handed a glossary.
+// ---------------------------------------------------------------------------
+function flameRead(S){
+  if(S.eff.gas<0.5) return { a:'nothing to see', b:'the burners are as good as off.' };
+  if(S.atm>0.85)    return { a:'smoking',        b:'too rich. that is fuel going up the stack and carbon going into the clay.' };
+  if(S.atm>0.30)    return { a:'reducing',       b:'long, soft, licking orange. the fire is hungry and it is taking oxygen out of the glaze. this is the part that makes the colours.' };
+  if(S.atm>0.08)    return { a:'about neutral',  b:'green-tinted. neither pulling on the glaze nor burning clean.' };
+  return              { a:'burning clean',       b:'short, blue and bushy. plenty of air. good for climbing, and it will not reduce anything.' };
 }
 
 // --- the cone packs. you read a cone by how far it has bent, not by a number. ---

@@ -105,7 +105,26 @@ export const FIRE = {
   // to show effects." These are the time constants, in sim minutes, for each
   // control's effective value to chase its set value. Do not shorten them to make
   // the game feel responsive — responsiveness is the thing we are removing.
-  lag: { gas: 13, air: 18, damper: 26 },
+  // ⚠️⚠️ MEASURED, AND IT WAS THE WHOLE PROBLEM (Kyle, 2026-08-19: "doesn't make
+  // any sense... too complicated... less of a fun game").
+  // loop() used to step ONE SIM-MINUTE PER ANIMATION FRAME, so at "1×" the sim ran
+  // 60 sim-minutes per real second: the ENTIRE 21-hour firing was over in 21
+  // SECONDS, body reduction — the one-way door, the most consequential decision in
+  // the game — lasted HALF A SECOND, and the 26-sim-minute damper lag was 0.43s,
+  // i.e. invisible. The bible's whole design (a 30–45 minute attended firing, eight
+  // windows you steer, a lag that makes it a prediction problem) did not exist in
+  // the shipped game. It was a blur nobody could perceive, let alone act on.
+  //
+  // pace is now SIM-MINUTES PER REAL SECOND and the loop is frame-rate independent
+  // (it used to run at half speed on a 30fps machine, which was a second bug).
+  pace: { attend: 2, brisk: 14, fast: 45 },
+
+  // ⚠️ §5.3 calls control lag "the deepest, cheapest source of skill in the design"
+  // and it is right — but at 2 sim-min/sec the old values are a 7–13 SECOND dead
+  // zone, and Kyle's call (2026-08-19) was for a kiln that answers you. These are
+  // 2–3.5 real seconds: long enough that you are still steering the kiln of a
+  // moment ago, short enough that you can feel it move. Do not take them to zero.
+  lag: { gas: 4, air: 5, damper: 7 },
 
   stoich: 1.35,           // air units needed per unit of gas for a clean burn
   airPerNotch: 1.45,      // primary air contribution
@@ -338,11 +357,12 @@ export const GUIDE = {
        and flag one piece before you brick up — it comes out last, when it counts.` },
 
   fire: { who:'Ruthie',
-    t:`three knobs and none of them answer you. a change takes fifteen to thirty minutes to
-       show at the spyhole — the faint orange mark on a dial is your last change, still on its
-       way. so you are never steering the kiln in front of you, you are steering the one from
-       twenty minutes ago. the box up top says what it wants right now. the cones read heat
-       work, the pyrometer reads temperature, and they are not the same thing.
+    t:`three knobs, and the big picture is the spyhole. move something and watch it — the
+       flame answers you in a couple of seconds, and underneath it there is a line telling
+       you in plain words what it is doing. close the damper and it lengthens and goes
+       orange: that is reduction, and it is the thing that makes the colours.
+       the box on the right says what the kiln wants right now. the cones read heat work,
+       the pyrometer reads temperature, and they are not the same thing.
        one more: if cone 06 goes down before you have begun reducing, there is no reduction
        tonight. not less. none. nothing you do afterwards reopens it.` },
 
