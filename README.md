@@ -102,6 +102,41 @@ finally reads:
 > cooler shelf is a combination this kiln barely offers). Re-sweep if POSITIONS or
 > WANTS change.
 
+### …and a third of the kiln was the same shelf — M9b
+
+`shelfCharacter()` was a threshold ladder, and it collapsed **front middle, front top
+and back middle** onto the identical string *"good atmosphere."* Three of nine shelves
+reading as one, on the screen that carries the decision. Every shelf now carries its own
+line in `data.js` beside the numbers it has to be true of (§19.2); the ladder survives
+only as a fallback for a shelf added without one.
+
+> ⚠️ The old flue-shelf line was **wrong**, not merely dull — *"fast air. it dries the
+> surface."* `P.ash` does not dry anything; it is the chance of an **ashfly** mark, a warm
+> blush down the flame side (`kiln/pot.js:122`). And `P.flow` — what makes a glaze run down
+> the belly and pool in the foot — was never mentioned anywhere in the game. Both now say
+> what the code does. `tests/fit.mjs` asserts all nine are distinct, carry no numbers, and
+> agree with the numbers beside them.
+
+### The conditions screen said "the board" and then showed you three other things — M9c
+
+498 words across 13 blocks before you touched anything, and the heading **THE BOARD** was
+followed by the arc line, the kiln's condition, and the kiln god with five buttons of
+scrap clay, *then* the commissions. Everything above the heading is now tonight's state;
+nothing stands between the heading and the board.
+
+| | before | after |
+|---|---|---|
+| first firing | 498 words | 469 |
+| **returning player** | 391 words, 7 buttons | **332 words, 2 buttons** |
+
+164 of those 332 are the commissions themselves, so the chrome around the decision went
+**227 → 168**.
+
+> ⚠️ The two standing notes were doing Ruthie's job badly and forever. `teach()` shows each
+> guide **once** and `?` brings the whole primer back for good (§10) — but those paragraphs
+> restated it on every firing for the rest of the game, and one opened with almost the exact
+> words of the panel directly beneath it.
+
 ## Controls
 - **gas · primary air · the damper** — click a detent. A change takes **2–3½ seconds** to
   show at the spyhole: enough that you are still steering the kiln of a moment ago, little
